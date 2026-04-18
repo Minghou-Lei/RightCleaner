@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import {
@@ -125,6 +126,7 @@ function getRegistrySections(item: NormalizedMenuItem) {
 
 export function CleanupDetailPage() {
   const { itemId } = useParams();
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const {
     state: { menuItems, operationError },
     activeItemId,
@@ -193,9 +195,9 @@ export function CleanupDetailPage() {
         </div>
         <div className="rc-hero__actions">
           <button
-            className="rc-button rc-button-primary"
+            className={item.enabled ? "rc-button rc-button-danger" : "rc-button rc-button-primary"}
             disabled={!item.editable || activeItemId === item.id}
-            onClick={() => void toggleMenuItemEnabled(item.id, !item.enabled)}
+            onClick={() => setConfirmOpen(true)}
             type="button"
           >
             {activeItemId === item.id ? "处理中..." : item.enabled ? "禁用该项" : "重新启用"}
@@ -280,6 +282,38 @@ export function CleanupDetailPage() {
           </div>
         </section>
       </div>
+
+      {confirmOpen ? (
+        <div aria-label="详情操作确认弹窗" aria-modal="true" className="rc-modal" role="dialog">
+          <div className="rc-modal__backdrop" onClick={() => setConfirmOpen(false)} />
+          <section className="rc-card rc-modal__content">
+            <span className="rc-kicker">{item.enabled ? "危险操作" : "启用确认"}</span>
+            <h3 className="rc-title rc-title--sm">{item.enabled ? "确认禁用该菜单项" : "确认重新启用该菜单项"}</h3>
+            <p className="rc-body">
+              {item.title} 将立即更新右键菜单状态。
+              {item.enabled ? " 如果这是常用入口，禁用后会从当前菜单层级中消失。" : " 启用后会重新出现在可用菜单中。"}
+            </p>
+            <div className={`rc-banner ${item.enabled ? "rc-banner--danger" : "rc-banner--info"}`}>
+              注册路径: {item.trace.registrationPath}
+            </div>
+            <div className="rc-modal__actions">
+              <button className="rc-button rc-button-secondary" onClick={() => setConfirmOpen(false)} type="button">
+                取消
+              </button>
+              <button
+                className={item.enabled ? "rc-button rc-button-danger" : "rc-button rc-button-primary"}
+                onClick={() => {
+                  setConfirmOpen(false);
+                  void toggleMenuItemEnabled(item.id, !item.enabled);
+                }}
+                type="button"
+              >
+                {item.enabled ? "确认禁用" : "确认启用"}
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </section>
   );
 }

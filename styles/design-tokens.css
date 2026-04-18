@@ -230,6 +230,13 @@ body {
   transform: translateY(0);
 }
 
+.rc-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
+  box-shadow: none;
+}
+
 .rc-button-primary {
   background: linear-gradient(180deg, #14a29a 0%, var(--color-brand) 100%);
   color: var(--color-text-inverse);
@@ -244,6 +251,16 @@ body {
   background: var(--color-surface);
   border-color: var(--color-border);
   color: var(--color-text);
+}
+
+.rc-button-danger {
+  background: linear-gradient(180deg, #d25d5d 0%, var(--color-danger) 100%);
+  color: var(--color-text-inverse);
+  box-shadow: 0 10px 24px rgba(195, 73, 73, 0.24);
+}
+
+.rc-button-danger:hover {
+  background: linear-gradient(180deg, #c95353 0%, #b03f3f 100%);
 }
 
 .rc-input {

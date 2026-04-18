@@ -50,7 +50,7 @@ describe('CleanupListPage', () => {
             sourceLabel: '目录',
             target: 'directory',
             targetLabel: '目录',
-            enabled: false,
+            enabled: true,
             editable: false,
             visibility: 'primary',
             command: null,
@@ -63,6 +63,36 @@ describe('CleanupListPage', () => {
               notes: [],
             },
             tags: ['third-party'],
+          },
+          {
+            id: 'command-store-terminal',
+            title: 'Windows Terminal',
+            canonicalTitle: 'windows terminal',
+            sourceKind: 'command_store',
+            sourceLabel: '目录背景',
+            target: 'directory_background',
+            targetLabel: '目录背景',
+            enabled: false,
+            editable: true,
+            visibility: 'primary',
+            command: {
+              verb: 'wt',
+              command: '"wt.exe" -d "%V"',
+              delegateExecute: null,
+              explorerCommandHandler: null,
+              subCommands: [],
+            },
+            handlerClsid: null,
+            trace: {
+              registrationPath:
+                'HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\CommandStore\\shell\\WindowsTerminal',
+              commandPath:
+                'HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\CommandStore\\shell\\WindowsTerminal\\command',
+              commandStorePaths: [],
+              sourceValues: [],
+              notes: [],
+            },
+            tags: [],
           },
         ];
       }
@@ -79,7 +109,7 @@ describe('CleanupListPage', () => {
     });
   });
 
-  it('renders detection badges for flagged context menu entries', async () => {
+  function renderPage() {
     render(
       <MemoryRouter>
         <AppStateProvider>
@@ -87,27 +117,25 @@ describe('CleanupListPage', () => {
         </AppStateProvider>
       </MemoryRouter>,
     );
+  }
 
-    expect(
-      screen.getByRole('heading', { name: '菜单项识别结果与批量处置入口' }),
-    ).toBeInTheDocument();
+  it('renders detection badges for flagged context menu entries', async () => {
+    renderPage();
+
+    expect(screen.getByRole('heading', { name: '菜单项识别结果与批量处置入口' })).toBeInTheDocument();
     expect((await screen.findAllByText('来源不明')).length).toBeGreaterThan(0);
     expect((await screen.findAllByText('第三方扩展')).length).toBeGreaterThan(0);
-    expect(await screen.findByRole('button', { name: '禁用' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: '批量禁用' })).toBeInTheDocument();
   });
 
-  it('invokes the backend toggle command for a single item', async () => {
+  it('requires confirmation before toggling a single item', async () => {
     const user = userEvent.setup();
+    renderPage();
 
-    render(
-      <MemoryRouter>
-        <AppStateProvider>
-          <CleanupListPage />
-        </AppStateProvider>
-      </MemoryRouter>,
-    );
+    await user.click((await screen.findAllByRole('button', { name: '禁用' }))[0]);
 
-    await user.click(await screen.findByRole('button', { name: '禁用' }));
+    expect(await screen.findByRole('dialog', { name: '批量操作确认弹窗' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '确认禁用' }));
 
     await waitFor(() => {
       expect(invokeMock).toHaveBeenCalledWith('set_menu_item_enabled', {
@@ -126,23 +154,39 @@ describe('CleanupListPage', () => {
       </MemoryRouter>,
     );
 
-    expect(
-      await screen.findByRole('heading', { name: '当前聚焦: 第三方扩展' }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: '当前聚焦: 第三方扩展' })).toBeInTheDocument();
     expect(screen.getByText('7-Zip')).toBeInTheDocument();
     expect(screen.queryByText('Open with Code')).not.toBeInTheDocument();
   });
 
+  it('supports bulk actions and skips readonly or already-matching items', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    const checkboxes = await screen.findAllByRole('checkbox');
+    await user.click(checkboxes[0]);
+    await user.click(checkboxes[1]);
+    await user.click(checkboxes[2]);
+    await user.click(screen.getByRole('button', { name: '批量禁用' }));
+
+    expect(
+      await screen.findByText(
+        '已自动跳过 1 个只读项。 另有 1 项已经处于目标状态，不会重复提交。',
+      ),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '确认禁用' }));
+
+    await waitFor(() => {
+      expect(invokeMock).toHaveBeenCalledWith('set_menu_item_enabled', {
+        itemId: 'shell-verb-open-code',
+        enabled: false,
+      });
+    });
+  });
+
   it('filters by risk and source, then updates sort direction', async () => {
     const user = userEvent.setup();
-
-    render(
-      <MemoryRouter>
-        <AppStateProvider>
-          <CleanupListPage />
-        </AppStateProvider>
-      </MemoryRouter>,
-    );
+    renderPage();
 
     await user.selectOptions(await screen.findByDisplayValue('全部风险'), 'high');
     await user.selectOptions(screen.getByDisplayValue('全部来源'), 'unknown');
@@ -152,5 +196,15 @@ describe('CleanupListPage', () => {
 
     await user.click(screen.getByRole('button', { name: '降序' }));
     expect(screen.getByRole('button', { name: '升序' })).toBeInTheDocument();
+  });
+
+  it('shows an empty state when filters remove every result', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.type(await screen.findByPlaceholderText('搜索标题、对象类型、来源、状态、风险、路径或异常标签'), 'does-not-exist');
+
+    expect(await screen.findByRole('heading', { name: '没有符合筛选条件的结果' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '清空筛选条件' })).toBeInTheDocument();
   });
 });
