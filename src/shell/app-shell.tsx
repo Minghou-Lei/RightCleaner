@@ -12,7 +12,7 @@ const navigation = [
 
 export function AppShell({ children }: PropsWithChildren) {
   const {
-    state: { phase, selectedItemIds }
+    state: { phase, selectedItemIds, scannedScopeCount, lastScanSummary }
   } = useAppState();
 
   return (
@@ -38,7 +38,10 @@ export function AppShell({ children }: PropsWithChildren) {
 
         <div className="rc-sidebar__status rc-card">
           <span className="rc-badge">当前阶段 {phase}</span>
-          <p className="rc-body">已选清理项 {selectedItemIds.length} 个，后续页面可直接复用该全局状态。</p>
+          <p className="rc-body">
+            已选来源 {selectedItemIds.length} 个 · 已扫描场景 {scannedScopeCount} 个。
+          </p>
+          <p className="rc-body">{lastScanSummary}</p>
         </div>
       </aside>
 
