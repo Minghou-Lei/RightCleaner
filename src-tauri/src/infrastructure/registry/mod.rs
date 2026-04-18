@@ -56,6 +56,13 @@ impl RegistryRoot {
         [Self::CurrentUserClasses, Self::LocalMachineClasses, Self::ClassesRoot]
     }
 
+    pub fn requires_elevation(self) -> bool {
+        matches!(
+            self,
+            Self::LocalMachine | Self::LocalMachineClasses | Self::ClassesRoot
+        )
+    }
+
     fn fixed_prefix(self) -> Option<&'static str> {
         match self {
             Self::CurrentUserClasses | Self::LocalMachineClasses => Some(CLASSES_PREFIX),
@@ -334,6 +341,11 @@ pub fn context_menu_registry_locations() -> Vec<RegistryLocation> {
         .collect()
 }
 
+pub fn parse_registry_location(path: &str) -> Result<RegistryLocation, String> {
+    RegistryLocation::parse_full_path(path)
+        .ok_or_else(|| format!("unsupported registry root in path `{path}`"))
+}
+
 fn normalize_registry_path(path: &str) -> String {
     path.replace('/', "\\")
         .split('\\')
@@ -349,8 +361,9 @@ fn strip_classes_prefix(path: &str) -> Option<String> {
         return Some(String::new());
     }
 
+    let prefix_with_separator = format!("{prefix}\\");
     upper
-        .strip_prefix(&(prefix + "\\"))
+        .strip_prefix(&prefix_with_separator)
         .map(|_| path[prefix.len() + 1..].to_string())
 }
 

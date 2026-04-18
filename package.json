@@ -15,14 +15,15 @@
     "tauri": "tauri"
   },
   "dependencies": {
-    "@tauri-apps/api": "^2.4.0",
+    "@tauri-apps/api": "2.0.3",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.5.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.25.1",
-    "@tauri-apps/cli": "^2.4.1",
+    "@tauri-apps/cli": "2.0.3",
+    "@tauri-apps/cli-win32-x64-msvc": "^2.0.3",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",

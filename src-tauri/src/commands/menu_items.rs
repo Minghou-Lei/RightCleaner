@@ -625,7 +625,7 @@ fn is_process_elevated() -> Result<bool, String> {
             return Err("failed to query process token".to_string());
         }
 
-        let mut elevation = TOKEN_ELEVATION::default();
+        let mut elevation: TOKEN_ELEVATION = std::mem::zeroed();
         let mut size = std::mem::size_of::<TOKEN_ELEVATION>() as u32;
         let ok = GetTokenInformation(
             token,

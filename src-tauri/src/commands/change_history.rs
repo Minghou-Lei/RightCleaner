@@ -7,7 +7,7 @@ pub fn list_change_history() -> Result<Vec<ChangeRecord>, String> {
 }
 
 #[tauri::command]
-pub fn disable_menu_item(request: DisableMenuItemRequest) -> Result<ChangeRecord, String> {
+pub fn disable_menu_item_with_history(request: DisableMenuItemRequest) -> Result<ChangeRecord, String> {
     change_history::disable_menu_item(request)
 }
 

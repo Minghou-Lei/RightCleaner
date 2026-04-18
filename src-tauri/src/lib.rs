@@ -17,7 +17,7 @@ pub fn run() {
             commands::menu_items::remove_menu_items,
             commands::menu_items::restore_backup,
             commands::change_history::list_change_history,
-            commands::change_history::disable_menu_item,
+            commands::change_history::disable_menu_item_with_history,
             commands::change_history::undo_change,
             commands::change_history::redo_change,
             shell_menu::enumerate_shell_menu_sources

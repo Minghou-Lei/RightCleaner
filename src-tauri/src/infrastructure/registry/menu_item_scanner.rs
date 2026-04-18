@@ -18,7 +18,7 @@ struct RegistryKeyData {
     values: BTreeMap<String, RegistryValue>,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 struct ShellRootSpec {
     root_path: &'static str,
     source_label: &'static str,
