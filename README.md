@@ -192,6 +192,72 @@ This repository is not just AI-assisted. It is structurally developed through a 
 - `Vibe Kanban` 负责 Epic 规划、issue 拆分、issue 关联 workspace 和分阶段执行。
 - 项目历史遵循“父任务集成”而不是无序堆积的临时分支。
 
+## AI / Token Usage Transparency
+
+<p align="center">
+  <img alt="Today Requests" src="https://img.shields.io/badge/today%20requests-1%2C504-6C7CF5?style=flat-square">
+  <img alt="Today Tokens" src="https://img.shields.io/badge/today%20tokens-197.8M-15A39A?style=flat-square">
+  <img alt="Today Cost" src="https://img.shields.io/badge/today%20cost-%2477.94-E39A22?style=flat-square">
+  <img alt="Total Tokens" src="https://img.shields.io/badge/total%20tokens-264.7M-2D6CDF?style=flat-square">
+  <img alt="Total Cost" src="https://img.shields.io/badge/total%20cost-%24114.79-C34949?style=flat-square">
+</p>
+
+<p align="center">
+  <img alt="Primary Model" src="https://img.shields.io/badge/primary-gpt--5.4-111827?style=flat-square">
+  <img alt="Primary Share" src="https://img.shields.io/badge/usage%20share-99.6%25-0F8A83?style=flat-square">
+  <img alt="Mini Share" src="https://img.shields.io/badge/gpt--5.4--mini-0.4%25-7A9190?style=flat-square">
+</p>
+
+The project keeps the `Codex + Vibe Kanban` workflow visible not only in code history, but also in usage cost.
+
+项目不仅在代码历史上体现 `Codex + Vibe Kanban` 的开发流程，也尽量透明展示这套流程对应的 Token 与费用开销。
+
+This section is intentionally included in the README to make the development cost profile auditable and concrete, rather than leaving the AI build process as a vague claim.
+
+这个区块特意保留在 README 中，是为了让 `AI 驱动开发` 的成本曲线、模型占比和消耗规模变得可审计、可验证，而不是只停留在抽象表述层面。
+
+### Snapshot
+
+- **Today Requests**: `1,504`
+- **Today Tokens**: `197.8M`
+- **Today Cost**: `$77.94`
+- **Total Requests**: `2,293`
+- **Total Tokens**: `264.7M`
+- **Total Cost**: `$114.79`
+
+- **当日请求数**：`1,504`
+- **当日 Token**：`197.8M`
+- **当日费用**：`$77.94`
+- **总请求数**：`2,293`
+- **总 Token**：`264.7M`
+- **总费用**：`$114.79`
+
+### Model Breakdown
+
+- `gpt-5.4`: `1,477` requests, `198.91M` total tokens, `$77.761082`, `99.6%` of tracked spend
+- `gpt-5.4-mini`: `30` requests, `851.22K` total tokens, `$0.746788`, `0.4%` of tracked spend
+
+- `gpt-5.4`：`1,477` 次请求，`198.91M` Token，`$77.761082`，占总费用 `99.6%`
+- `gpt-5.4-mini`：`30` 次请求，`851.22K` Token，`$0.746788`，占总费用 `0.4%`
+
+### Usage Screenshots
+
+<p align="center">
+  <img src="docs/assets/token-usage-summary.png" alt="RightCleaner token usage summary" width="900" />
+</p>
+
+<p align="center">
+  <img src="docs/assets/token-usage-breakdown.png" alt="RightCleaner token usage breakdown" width="900" />
+</p>
+
+These screenshots capture the current cost profile of the project build-out, including request volume, model mix, total token usage, and usage trend.
+
+这两张截图展示了当前项目构建过程中的请求规模、模型占比、总 Token 用量以及使用趋势。
+
+From a repository storytelling perspective, this section matters because it turns `Built with Codex + Vibe Kanban` into something measurable: not only what was built, but also what it cost to build it.
+
+从仓库叙事角度看，这个区块的重要性在于，它把 `Built with Codex + Vibe Kanban` 从一句宣传语变成了可量化事实：不仅展示做了什么，也展示为此付出了多少真实算力成本。
+
 ## Next
 
 The next planned work areas are:
