@@ -1,0 +1,177 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rightcleaner.local/schemas/settings.schema.json",
+  "title": "RightCleaner Settings",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "revision",
+    "created_at",
+    "updated_at",
+    "ui",
+    "cleanup",
+    "scan",
+    "diagnostics",
+    "safety"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ui": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "language",
+        "theme",
+        "list_density",
+        "default_sort",
+        "show_hidden_selected_items"
+      ],
+      "properties": {
+        "language": {
+          "type": "string",
+          "enum": ["zh-CN", "en-US"]
+        },
+        "theme": {
+          "type": "string",
+          "enum": ["system", "light", "dark"]
+        },
+        "list_density": {
+          "type": "string",
+          "enum": ["comfortable", "compact"]
+        },
+        "default_sort": {
+          "type": "string",
+          "enum": ["recommended", "size_desc", "risk_desc", "updated_desc"]
+        },
+        "show_hidden_selected_items": {
+          "type": "boolean"
+        }
+      }
+    },
+    "cleanup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "backup_before_cleanup",
+        "continue_on_item_failure",
+        "auto_open_results",
+        "default_batch_confirmation"
+      ],
+      "properties": {
+        "backup_before_cleanup": {
+          "type": "boolean"
+        },
+        "continue_on_item_failure": {
+          "type": "boolean"
+        },
+        "auto_open_results": {
+          "type": "boolean"
+        },
+        "default_batch_confirmation": {
+          "type": "string",
+          "enum": ["summary_only", "full_detail"]
+        }
+      }
+    },
+    "scan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "include_categories",
+        "excluded_paths",
+        "show_high_risk_by_default"
+      ],
+      "properties": {
+        "include_categories": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "system_temp",
+              "app_cache",
+              "recycle_bin",
+              "installer_residue",
+              "log_residue"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "excluded_paths": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "show_high_risk_by_default": {
+          "type": "boolean"
+        }
+      }
+    },
+    "diagnostics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "log_retention_days",
+        "error_retention_days",
+        "allow_diagnostic_export",
+        "include_debug_fields_in_export"
+      ],
+      "properties": {
+        "log_retention_days": {
+          "type": "integer",
+          "minimum": 7,
+          "maximum": 365
+        },
+        "error_retention_days": {
+          "type": "integer",
+          "minimum": 7,
+          "maximum": 365
+        },
+        "allow_diagnostic_export": {
+          "type": "boolean"
+        },
+        "include_debug_fields_in_export": {
+          "type": "boolean"
+        }
+      }
+    },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "require_high_risk_confirmation",
+        "require_non_recoverable_confirmation",
+        "warn_on_large_cleanup_threshold_mb"
+      ],
+      "properties": {
+        "require_high_risk_confirmation": {
+          "type": "boolean"
+        },
+        "require_non_recoverable_confirmation": {
+          "type": "boolean"
+        },
+        "warn_on_large_cleanup_threshold_mb": {
+          "type": "integer",
+          "minimum": 256
+        }
+      }
+    }
+  }
+}

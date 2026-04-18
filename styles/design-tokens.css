@@ -2,8 +2,8 @@
   color-scheme: light;
 
   /* Typography */
-  --font-sans: "Plus Jakarta Sans", "Inter", "Segoe UI", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", "Cascadia Code", "SFMono-Regular", monospace;
+  --font-sans: 'Plus Jakarta Sans', 'Inter', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Cascadia Code', 'SFMono-Regular', monospace;
 
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
@@ -69,6 +69,29 @@
   --color-warning-soft: #fbe8d1;
   --color-danger: #c34949;
   --color-danger-soft: #f9dede;
+  --color-focus-ring: rgba(15, 138, 131, 0.16);
+
+  /* Semantic surfaces */
+  --surface-page: var(--color-bg);
+  --surface-panel: var(--color-surface);
+  --surface-panel-muted: var(--color-surface-strong);
+  --surface-panel-emphasis: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(248, 251, 250, 0.98) 100%);
+
+  /* Semantic text */
+  --text-primary: var(--color-text);
+  --text-secondary: var(--color-text-muted);
+  --text-tertiary: var(--color-text-soft);
+  --text-on-brand: var(--color-text-inverse);
+
+  /* Semantic status */
+  --status-low-bg: var(--color-success-soft);
+  --status-low-fg: var(--color-success);
+  --status-medium-bg: var(--color-warning-soft);
+  --status-medium-fg: var(--color-warning);
+  --status-high-bg: var(--color-danger-soft);
+  --status-high-fg: var(--color-danger);
+  --status-info-bg: var(--color-accent-soft);
+  --status-info-fg: var(--color-accent);
 
   /* Shadows */
   --shadow-sm: 0 1px 2px rgba(15, 34, 33, 0.06);
@@ -87,6 +110,10 @@
   --page-padding: 1.5rem;
   --content-gap: 2rem;
   --control-height: 2.75rem;
+}
+
+:root[data-theme="system"] {
+  color-scheme: light;
 }
 
 @media (max-width: 768px) {
@@ -138,7 +165,7 @@ body {
 
 :focus-visible {
   outline: none;
-  box-shadow: 0 0 0 4px rgba(15, 138, 131, 0.16);
+  box-shadow: 0 0 0 4px var(--color-focus-ring);
 }
 
 ::selection {
@@ -152,7 +179,7 @@ body {
 }
 
 .rc-surface {
-  background: color-mix(in srgb, var(--color-surface) 88%, var(--color-bg-elevated) 12%);
+  background: color-mix(in srgb, var(--surface-panel) 88%, var(--color-bg-elevated) 12%);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-md);
@@ -160,7 +187,7 @@ body {
 
 .rc-card {
   padding: var(--space-6);
-  background: var(--color-surface);
+  background: var(--surface-panel);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
@@ -177,7 +204,7 @@ body {
 .rc-body {
   font-size: var(--text-md);
   line-height: var(--leading-normal);
-  color: var(--color-text-muted);
+  color: var(--text-secondary);
 }
 
 .rc-button {

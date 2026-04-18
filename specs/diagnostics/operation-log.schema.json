@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rightcleaner.local/schemas/operation-log.schema.json",
+  "title": "RightCleaner Operation Log Event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "event_id",
+    "timestamp",
+    "level",
+    "category",
+    "action",
+    "session_id",
+    "operation_id",
+    "trace_id",
+    "outcome",
+    "payload"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "event_id": {
+      "type": "string",
+      "minLength": 8
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "level": {
+      "type": "string",
+      "enum": ["debug", "info", "warning", "error"]
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "app.lifecycle",
+        "scan.lifecycle",
+        "cleanup.lifecycle",
+        "backup.lifecycle",
+        "restore.lifecycle",
+        "settings.lifecycle",
+        "diagnostics.lifecycle"
+      ]
+    },
+    "action": {
+      "type": "string",
+      "enum": [
+        "started",
+        "completed",
+        "failed",
+        "cancelled",
+        "confirmed",
+        "exported",
+        "updated"
+      ]
+    },
+    "session_id": {
+      "type": "string",
+      "minLength": 8
+    },
+    "operation_id": {
+      "type": "string",
+      "minLength": 8
+    },
+    "trace_id": {
+      "type": "string",
+      "minLength": 8
+    },
+    "outcome": {
+      "type": "string",
+      "enum": ["success", "partial_success", "failure", "noop", "user_cancelled"]
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "target_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "success_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "failure_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "released_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "duration_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "risk_level": {
+          "type": "string",
+          "enum": ["low", "medium", "high"]
+        },
+        "settings_keys_changed": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

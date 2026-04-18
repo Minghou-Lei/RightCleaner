@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rightcleaner.local/schemas/diagnostic-bundle.schema.json",
+  "title": "RightCleaner Diagnostic Bundle Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "bundle_id",
+    "created_at",
+    "reason",
+    "source_error_ids",
+    "artifacts",
+    "redaction_summary"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "bundle_id": {
+      "type": "string",
+      "minLength": 8
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "reason": {
+      "type": "string",
+      "enum": [
+        "manual_export",
+        "post_failure_export",
+        "support_request"
+      ]
+    },
+    "source_error_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "path",
+          "content_type",
+          "redacted"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "content_type": {
+            "type": "string",
+            "enum": ["json", "jsonl", "txt"]
+          },
+          "redacted": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "redaction_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "absolute_paths_masked",
+        "user_names_masked",
+        "tokens_removed"
+      ],
+      "properties": {
+        "absolute_paths_masked": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "user_names_masked": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "tokens_removed": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,57 @@
+@import '../../styles/design-tokens.css';
+
+#root {
+  min-height: 100vh;
+}
+
+.rc-app-shell {
+  display: grid;
+  gap: var(--space-8);
+}
+
+.rc-hero {
+  padding: var(--space-8);
+  position: relative;
+  overflow: hidden;
+}
+
+.rc-hero::after {
+  content: '';
+  position: absolute;
+  inset: auto -10% -35% 35%;
+  height: 220px;
+  background: radial-gradient(circle, rgba(45, 108, 223, 0.18), transparent 70%);
+  pointer-events: none;
+}
+
+.rc-hero__copy {
+  display: grid;
+  gap: var(--space-4);
+  max-width: 48rem;
+  position: relative;
+  z-index: 1;
+}
+
+.rc-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-5);
+}
+
+.rc-panel {
+  display: grid;
+  gap: var(--space-3);
+  min-height: 180px;
+}
+
+.rc-panel__title {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+}
+
+@media (max-width: 900px) {
+  .rc-grid {
+    grid-template-columns: 1fr;
+  }
+}
