@@ -1,17 +1,31 @@
-import { useMemo } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useMemo } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 
 import {
   analyzeNormalizedMenuItem,
   getDetectionTagLabel,
-} from "@/features/cleanup/menu-item-detection";
+  type DetectionTag,
+} from '@/features/cleanup/menu-item-detection';
 import {
   formatMenuSourceKind,
   formatMenuVisibility,
   type MenuSourceKind,
   type MenuTargetKind,
-} from "../shared/menu-items";
-import { useAppState, useFilteredMenuItems } from "../state/app-state";
+} from '../shared/menu-items';
+import { useAppState, useFilteredMenuItems } from '../state/app-state';
+
+function parseIssueFilter(value: string | null): DetectionTag | null {
+  switch (value) {
+    case 'abnormal':
+    case 'duplicate':
+    case 'hidden':
+    case 'third-party':
+    case 'unknown-source':
+      return value;
+    default:
+      return null;
+  }
+}
 
 export function CleanupListPage() {
   const {
@@ -20,7 +34,22 @@ export function CleanupListPage() {
     activeItemId,
     toggleMenuItemEnabled,
   } = useAppState();
+  const [searchParams] = useSearchParams();
   const menuItems = useFilteredMenuItems();
+  const issueFilter = parseIssueFilter(searchParams.get('issue'));
+
+  useEffect(() => {
+    dispatch({
+      type: 'set-filter',
+      filter: {
+        keyword: searchParams.get('keyword') ?? '',
+        sourceKind: (searchParams.get('source') || null) as MenuSourceKind | null,
+        target: (searchParams.get('target') || null) as MenuTargetKind | null,
+        enabledOnly: searchParams.get('enabledOnly') === 'true',
+        editableOnly: searchParams.get('editableOnly') === 'true',
+      },
+    });
+  }, [dispatch, searchParams]);
 
   const duplicateGroups = useMemo(() => {
     const counts = new Map<string, number>();
@@ -36,11 +65,21 @@ export function CleanupListPage() {
         item,
         detection: analyzeNormalizedMenuItem(
           item,
-          (duplicateGroups.get(item.canonicalTitle) ?? 0) > 1 ? item.canonicalTitle : null
+          (duplicateGroups.get(item.canonicalTitle) ?? 0) > 1 ? item.canonicalTitle : null,
         ),
       })),
-    [duplicateGroups, menuItems]
+    [duplicateGroups, menuItems],
   );
+
+  const visibleItems = useMemo(
+    () =>
+      issueFilter
+        ? detectedItems.filter(({ detection }) => detection.tags.includes(issueFilter))
+        : detectedItems,
+    [detectedItems, issueFilter],
+  );
+
+  const issueLabel = issueFilter ? getDetectionTagLabel(issueFilter) : null;
 
   return (
     <section className="rc-screen">
@@ -56,14 +95,16 @@ export function CleanupListPage() {
           className="rc-input"
           placeholder="搜索菜单项标题、路径、命令、CLSID 或异常标签"
           value={filters.keyword}
-          onChange={(event) => dispatch({ type: "set-filter", filter: { keyword: event.target.value } })}
+          onChange={(event) =>
+            dispatch({ type: 'set-filter', filter: { keyword: event.target.value } })
+          }
         />
         <select
           className="rc-input"
-          value={filters.sourceKind ?? ""}
+          value={filters.sourceKind ?? ''}
           onChange={(event) =>
             dispatch({
-              type: "set-filter",
+              type: 'set-filter',
               filter: { sourceKind: (event.target.value || null) as MenuSourceKind | null },
             })
           }
@@ -75,10 +116,10 @@ export function CleanupListPage() {
         </select>
         <select
           className="rc-input"
-          value={filters.target ?? ""}
+          value={filters.target ?? ''}
           onChange={(event) =>
             dispatch({
-              type: "set-filter",
+              type: 'set-filter',
               filter: { target: (event.target.value || null) as MenuTargetKind | null },
             })
           }
@@ -94,32 +135,49 @@ export function CleanupListPage() {
         </select>
         <button
           className="rc-button rc-button-secondary"
-          onClick={() => dispatch({ type: "set-filter", filter: { enabledOnly: !filters.enabledOnly } })}
+          onClick={() =>
+            dispatch({ type: 'set-filter', filter: { enabledOnly: !filters.enabledOnly } })
+          }
           type="button"
         >
-          {filters.enabledOnly ? "显示全部" : "仅启用项"}
+          {filters.enabledOnly ? '显示全部' : '仅启用项'}
         </button>
         <button
           className="rc-button rc-button-secondary"
-          onClick={() => dispatch({ type: "set-filter", filter: { editableOnly: !filters.editableOnly } })}
+          onClick={() =>
+            dispatch({ type: 'set-filter', filter: { editableOnly: !filters.editableOnly } })
+          }
           type="button"
         >
-          {filters.editableOnly ? "显示全部" : "仅可编辑"}
+          {filters.editableOnly ? '显示全部' : '仅可编辑'}
         </button>
       </section>
 
       {menuLoadError ? <p className="rc-body">{menuLoadError}</p> : null}
       {operationError ? <p className="rc-body">{operationError}</p> : null}
+      {issueLabel ? (
+        <section className="rc-card">
+          <div className="rc-section-heading">
+            <div>
+              <span className="rc-kicker">首页筛选</span>
+              <h3 className="rc-panel__title">当前聚焦: {issueLabel}</h3>
+            </div>
+            <Link className="rc-button rc-button-secondary" to="/cleanup">
+              清除筛选
+            </Link>
+          </div>
+        </section>
+      ) : null}
 
       <div className="rc-stack">
-        {detectedItems.map(({ item, detection }) => {
+        {visibleItems.map(({ item, detection }) => {
           const selected = selectedItemIds.includes(item.id);
           return (
             <article className="rc-card rc-row" key={item.id}>
               <label className="rc-row__checkbox">
                 <input
                   checked={selected}
-                  onChange={() => dispatch({ type: "toggle-item-selection", itemId: item.id })}
+                  onChange={() => dispatch({ type: 'toggle-item-selection', itemId: item.id })}
                   type="checkbox"
                 />
                 <span />
@@ -127,10 +185,12 @@ export function CleanupListPage() {
               <div className="rc-row__content">
                 <div className="rc-row__title">
                   <strong>{item.title}</strong>
-                  <span className={`rc-pill rc-pill--${detection.badgeTone}`}>{detection.headline}</span>
+                  <span className={`rc-pill rc-pill--${detection.badgeTone}`}>
+                    {detection.headline}
+                  </span>
                 </div>
                 <p className="rc-body">
-                  {formatMenuSourceKind(item.sourceKind)} · {item.targetLabel} ·{" "}
+                  {formatMenuSourceKind(item.sourceKind)} · {item.targetLabel} ·{' '}
                   {formatMenuVisibility(item.visibility)}
                 </p>
                 <p className="rc-body">{detection.detail}</p>
@@ -145,14 +205,16 @@ export function CleanupListPage() {
                 ) : null}
               </div>
               <div className="rc-row__meta">
-                <span>{item.command?.command ?? item.handlerClsid ?? item.trace.registrationPath}</span>
+                <span>
+                  {item.command?.command ?? item.handlerClsid ?? item.trace.registrationPath}
+                </span>
                 <button
                   className="rc-button rc-button-primary"
                   disabled={activeItemId === item.id || !item.editable}
                   onClick={() => void toggleMenuItemEnabled(item.id, !item.enabled)}
                   type="button"
                 >
-                  {activeItemId === item.id ? "处理中..." : item.enabled ? "禁用" : "启用"}
+                  {activeItemId === item.id ? '处理中...' : item.enabled ? '禁用' : '启用'}
                 </button>
                 <Link className="rc-button rc-button-secondary" to={`/cleanup/${item.id}`}>
                   查看详情
@@ -161,6 +223,7 @@ export function CleanupListPage() {
             </article>
           );
         })}
+        {visibleItems.length === 0 ? <p className="rc-body">当前筛选下没有匹配的菜单项。</p> : null}
       </div>
     </section>
   );

@@ -1,77 +1,77 @@
-import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
-import { invoke } from "@tauri-apps/api/core";
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
+import { invoke } from '@tauri-apps/api/core';
 
-import { AppStateProvider } from "@/state/app-state";
-import { CleanupListPage } from "./cleanup-list-page";
+import { AppStateProvider } from '@/state/app-state';
+import { CleanupListPage } from './cleanup-list-page';
 
-describe("CleanupListPage", () => {
+describe('CleanupListPage', () => {
   const invokeMock = vi.mocked(invoke);
 
   beforeEach(() => {
     invokeMock.mockReset();
     invokeMock.mockImplementation(async (command, args) => {
-      if (command === "list_menu_items") {
+      if (command === 'list_menu_items') {
         return [
           {
-            id: "shell-verb-open-code",
-            title: "Open with Code",
-            canonicalTitle: "open with code",
-            sourceKind: "shell_verb",
-            sourceLabel: "文件",
-            target: "file",
-            targetLabel: "文件",
+            id: 'shell-verb-open-code',
+            title: 'Open with Code',
+            canonicalTitle: 'open with code',
+            sourceKind: 'shell_verb',
+            sourceLabel: '文件',
+            target: 'file',
+            targetLabel: '文件',
             enabled: true,
             editable: true,
-            visibility: "primary",
+            visibility: 'primary',
             command: {
-              verb: "openwithcode",
-              command: "\"Code.exe\" \"%1\"",
+              verb: 'openwithcode',
+              command: '"Code.exe" "%1"',
               delegateExecute: null,
               explorerCommandHandler: null,
-              subCommands: []
+              subCommands: [],
             },
             handlerClsid: null,
             trace: {
-              registrationPath: "HKEY_CLASSES_ROOT\\*\\shell\\OpenWithCode",
-              commandPath: "HKEY_CLASSES_ROOT\\*\\shell\\OpenWithCode\\command",
+              registrationPath: 'HKEY_CLASSES_ROOT\\*\\shell\\OpenWithCode',
+              commandPath: 'HKEY_CLASSES_ROOT\\*\\shell\\OpenWithCode\\command',
               commandStorePaths: [],
               sourceValues: [],
-              notes: []
+              notes: [],
             },
-            tags: ["unknown-source", "third-party"]
+            tags: ['unknown-source', 'third-party'],
           },
           {
-            id: "handler-7zip",
-            title: "7-Zip",
-            canonicalTitle: "7-zip",
-            sourceKind: "shell_extension",
-            sourceLabel: "目录",
-            target: "directory",
-            targetLabel: "目录",
+            id: 'handler-7zip',
+            title: '7-Zip',
+            canonicalTitle: '7-zip',
+            sourceKind: 'shell_extension',
+            sourceLabel: '目录',
+            target: 'directory',
+            targetLabel: '目录',
             enabled: false,
             editable: false,
-            visibility: "primary",
+            visibility: 'primary',
             command: null,
-            handlerClsid: "{23170F69-40C1-278A-1000-000100020000}",
+            handlerClsid: '{23170F69-40C1-278A-1000-000100020000}',
             trace: {
-              registrationPath: "HKEY_CLASSES_ROOT\\Directory\\shellex\\ContextMenuHandlers\\7-Zip",
+              registrationPath: 'HKEY_CLASSES_ROOT\\Directory\\shellex\\ContextMenuHandlers\\7-Zip',
               commandPath: null,
               commandStorePaths: [],
               sourceValues: [],
-              notes: []
+              notes: [],
             },
-            tags: ["third-party"]
-          }
+            tags: ['third-party'],
+          },
         ];
       }
 
-      if (command === "list_recovery_points") {
+      if (command === 'list_recovery_points') {
         return [];
       }
 
-      if (command === "set_menu_item_enabled") {
+      if (command === 'set_menu_item_enabled') {
         return null;
       }
 
@@ -79,22 +79,24 @@ describe("CleanupListPage", () => {
     });
   });
 
-  it("renders detection badges for flagged context menu entries", async () => {
+  it('renders detection badges for flagged context menu entries', async () => {
     render(
       <MemoryRouter>
         <AppStateProvider>
           <CleanupListPage />
         </AppStateProvider>
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
-    expect(screen.getByRole("heading", { name: "菜单项识别结果与批量处置入口" })).toBeInTheDocument();
-    expect((await screen.findAllByText("来源不明")).length).toBeGreaterThan(0);
-    expect((await screen.findAllByText("第三方扩展")).length).toBeGreaterThan(0);
-    expect(await screen.findByRole("button", { name: "禁用" })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: '菜单项识别结果与批量处置入口' }),
+    ).toBeInTheDocument();
+    expect((await screen.findAllByText('来源不明')).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText('第三方扩展')).length).toBeGreaterThan(0);
+    expect(await screen.findByRole('button', { name: '禁用' })).toBeInTheDocument();
   });
 
-  it("invokes the backend toggle command for a single item", async () => {
+  it('invokes the backend toggle command for a single item', async () => {
     const user = userEvent.setup();
 
     render(
@@ -102,16 +104,32 @@ describe("CleanupListPage", () => {
         <AppStateProvider>
           <CleanupListPage />
         </AppStateProvider>
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
-    await user.click(await screen.findByRole("button", { name: "禁用" }));
+    await user.click(await screen.findByRole('button', { name: '禁用' }));
 
     await waitFor(() => {
-      expect(invokeMock).toHaveBeenCalledWith("set_menu_item_enabled", {
-        itemId: "shell-verb-open-code",
-        enabled: false
+      expect(invokeMock).toHaveBeenCalledWith('set_menu_item_enabled', {
+        itemId: 'shell-verb-open-code',
+        enabled: false,
       });
     });
+  });
+
+  it('applies homepage query filters for issue hotspots', async () => {
+    render(
+      <MemoryRouter initialEntries={['/cleanup?source=shell_extension&issue=third-party']}>
+        <AppStateProvider>
+          <CleanupListPage />
+        </AppStateProvider>
+      </MemoryRouter>,
+    );
+
+    expect(
+      await screen.findByRole('heading', { name: '当前聚焦: 第三方扩展' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('7-Zip')).toBeInTheDocument();
+    expect(screen.queryByText('Open with Code')).not.toBeInTheDocument();
   });
 });
