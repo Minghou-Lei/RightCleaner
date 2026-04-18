@@ -62,6 +62,7 @@ type AppAction =
   | { type: "set-menu-load-error"; message: string }
   | { type: "set-operation-error"; message: string | null }
   | { type: "toggle-item-selection"; itemId: string }
+  | { type: "set-item-selection"; itemIds: string[] }
   | { type: "clear-selection" }
   | { type: "set-filter"; filter: Partial<MenuItemFilterState> };
 
@@ -74,10 +75,13 @@ const initialState: AppState = {
   selectedItemIds: [],
   filters: {
     keyword: "",
-    sourceKind: null,
     target: null,
-    enabledOnly: false,
+    source: null,
+    status: null,
+    riskLevel: null,
     editableOnly: false,
+    sortBy: "riskLevel",
+    sortDirection: "desc",
   },
   menuItems: [],
   backups: [],
@@ -106,12 +110,7 @@ function reducer(state: AppState, action: AppAction): AppState {
         menuLoadState: "ready",
         menuLoadError: null,
         operationError: null,
-        selectedItemIds:
-          nextSelectedItemIds.length > 0
-            ? nextSelectedItemIds
-            : action.items[0]
-              ? [action.items[0].id]
-              : [],
+        selectedItemIds: nextSelectedItemIds,
         scannedScopeCount,
         lastScanSummary: `已识别 ${action.items.length} 个菜单项，覆盖 ${scannedScopeCount} 个对象场景。`,
       };
@@ -143,6 +142,8 @@ function reducer(state: AppState, action: AppAction): AppState {
           : [...state.selectedItemIds, action.itemId],
       };
     }
+    case "set-item-selection":
+      return { ...state, selectedItemIds: action.itemIds };
     case "clear-selection":
       return { ...state, selectedItemIds: [] };
     case "set-filter":
@@ -162,9 +163,12 @@ type AppStateContextValue = {
   state: AppState;
   dispatch: Dispatch<AppAction>;
   activeItemId: string | null;
+  activeItemIds: string[];
   activeBackupId: string | null;
+  isItemBusy: (itemId: string) => boolean;
   reloadAppData: () => Promise<void>;
   toggleMenuItemEnabled: (itemId: string, enabled: boolean) => Promise<void>;
+  setMenuItemsEnabled: (itemIds: string[], enabled: boolean) => Promise<void>;
   restoreBackup: (backupId: string) => Promise<void>;
 };
 
@@ -172,7 +176,7 @@ const AppStateContext = createContext<AppStateContextValue | null>(null);
 
 export function AppStateProvider({ children }: PropsWithChildren) {
   const [state, dispatch] = useReducer(reducer, initialState);
-  const [activeItemId, setActiveItemId] = useState<string | null>(null);
+  const [activeItemIds, setActiveItemIds] = useState<string[]>([]);
   const [activeBackupId, setActiveBackupId] = useState<string | null>(null);
 
   const reloadAppData = useCallback(async () => {
@@ -193,22 +197,60 @@ export function AppStateProvider({ children }: PropsWithChildren) {
     }
   }, []);
 
-  const toggleMenuItemEnabled = useCallback(async (itemId: string, enabled: boolean) => {
-    setActiveItemId(itemId);
+  const setMenuItemsEnabled = useCallback(async (itemIds: string[], enabled: boolean) => {
+    const uniqueItemIds = [...new Set(itemIds)];
+
+    if (uniqueItemIds.length === 0) {
+      return;
+    }
+
+    setActiveItemIds(uniqueItemIds);
     dispatch({ type: "set-operation-error", message: null });
 
+    const failures: string[] = [];
+
     try {
-      await setMenuItemEnabled(itemId, enabled);
+      for (const itemId of uniqueItemIds) {
+        try {
+          await setMenuItemEnabled(itemId, enabled);
+        } catch (error: unknown) {
+          failures.push(
+            error instanceof Error ? `${itemId}: ${error.message}` : `${itemId}: 菜单项状态更新失败`
+          );
+        }
+      }
+
       await reloadAppData();
+
+      if (failures.length > 0) {
+        dispatch({
+          type: "set-operation-error",
+          message:
+            failures.length === uniqueItemIds.length
+              ? `批量${enabled ? "启用" : "禁用"}失败，共 ${failures.length} 项未完成。`
+              : `批量${enabled ? "启用" : "禁用"}部分完成，仍有 ${failures.length} 项失败。`,
+        });
+      }
     } catch (error: unknown) {
       dispatch({
         type: "set-operation-error",
-        message: error instanceof Error ? error.message : "菜单项状态更新失败",
+        message: error instanceof Error ? error.message : "批量更新菜单项状态失败",
       });
     } finally {
-      setActiveItemId(null);
+      setActiveItemIds([]);
     }
   }, [reloadAppData]);
+
+  const toggleMenuItemEnabled = useCallback(
+    async (itemId: string, enabled: boolean) => {
+      await setMenuItemsEnabled([itemId], enabled);
+    },
+    [setMenuItemsEnabled]
+  );
+
+  const activeItemId = activeItemIds.length === 1 ? (activeItemIds[0] ?? null) : null;
+
+  const isItemBusy = useCallback((itemId: string) => activeItemIds.includes(itemId), [activeItemIds]);
 
   const restoreBackup = useCallback(async (backupId: string) => {
     setActiveBackupId(backupId);
@@ -232,12 +274,25 @@ export function AppStateProvider({ children }: PropsWithChildren) {
       state,
       dispatch,
       activeItemId,
+      activeItemIds,
       activeBackupId,
+      isItemBusy,
       reloadAppData,
       toggleMenuItemEnabled,
+      setMenuItemsEnabled,
       restoreBackup,
     }),
-    [activeBackupId, activeItemId, reloadAppData, restoreBackup, state, toggleMenuItemEnabled]
+    [
+      activeBackupId,
+      activeItemId,
+      activeItemIds,
+      isItemBusy,
+      reloadAppData,
+      restoreBackup,
+      setMenuItemsEnabled,
+      state,
+      toggleMenuItemEnabled,
+    ]
   );
 
   useEffect(() => {

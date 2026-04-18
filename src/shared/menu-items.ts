@@ -1,3 +1,14 @@
+import {
+  compareRiskLevel,
+  formatMenuItemSourceCategory,
+  formatMenuItemStatus,
+  formatRiskLevel,
+  getMenuItemQueryMeta,
+  type MenuItemSourceCategory,
+  type MenuItemStatus,
+  type RiskLevel,
+} from "./menu-item-query";
+
 export type MenuSourceKind = "shell_verb" | "shell_extension" | "command_store";
 
 export type MenuTargetKind =
@@ -97,10 +108,13 @@ export type MenuItemBackupRecord = {
 
 export type MenuItemFilterState = {
   keyword: string;
-  sourceKind: MenuSourceKind | null;
   target: MenuTargetKind | null;
-  enabledOnly: boolean;
+  source: MenuItemSourceCategory | null;
+  status: MenuItemStatus | null;
+  riskLevel: RiskLevel | null;
   editableOnly: boolean;
+  sortBy: "title" | "target" | "source" | "status" | "riskLevel";
+  sortDirection: "asc" | "desc";
 };
 
 export function formatMenuSourceKind(sourceKind: MenuSourceKind) {
@@ -131,9 +145,18 @@ export function formatMenuVisibility(visibility: MenuVisibility) {
 
 export function filterMenuItems(items: NormalizedMenuItem[], filters: MenuItemFilterState) {
   const keyword = filters.keyword.trim().toLowerCase();
+  const duplicateCounts = new Map<string, number>();
 
-  return items.filter((item) => {
-    if (filters.sourceKind && item.sourceKind !== filters.sourceKind) {
+  for (const item of items) {
+    duplicateCounts.set(item.canonicalTitle, (duplicateCounts.get(item.canonicalTitle) ?? 0) + 1);
+  }
+
+  const filteredItems = items.filter((item) => {
+    const duplicateGroup =
+      (duplicateCounts.get(item.canonicalTitle) ?? 0) > 1 ? item.canonicalTitle : null;
+    const meta = getMenuItemQueryMeta(item, duplicateGroup);
+
+    if (filters.source && meta.source !== filters.source) {
       return false;
     }
 
@@ -141,11 +164,15 @@ export function filterMenuItems(items: NormalizedMenuItem[], filters: MenuItemFi
       return false;
     }
 
-    if (filters.enabledOnly && !item.enabled) {
+    if (filters.status && meta.status !== filters.status) {
       return false;
     }
 
     if (filters.editableOnly && !item.editable) {
+      return false;
+    }
+
+    if (filters.riskLevel && meta.riskLevel !== filters.riskLevel) {
       return false;
     }
 
@@ -158,6 +185,9 @@ export function filterMenuItems(items: NormalizedMenuItem[], filters: MenuItemFi
       item.canonicalTitle,
       item.sourceLabel,
       item.targetLabel,
+      formatMenuItemSourceCategory(meta.source),
+      formatMenuItemStatus(meta.status),
+      formatRiskLevel(meta.riskLevel),
       item.trace.registrationPath,
       item.command?.command ?? "",
       item.handlerClsid ?? "",
@@ -165,5 +195,47 @@ export function filterMenuItems(items: NormalizedMenuItem[], filters: MenuItemFi
     ];
 
     return haystacks.some((value) => value.toLowerCase().includes(keyword));
+  });
+
+  return filteredItems.sort((left, right) => {
+    const leftDuplicateGroup =
+      (duplicateCounts.get(left.canonicalTitle) ?? 0) > 1 ? left.canonicalTitle : null;
+    const rightDuplicateGroup =
+      (duplicateCounts.get(right.canonicalTitle) ?? 0) > 1 ? right.canonicalTitle : null;
+    const leftMeta = getMenuItemQueryMeta(left, leftDuplicateGroup);
+    const rightMeta = getMenuItemQueryMeta(right, rightDuplicateGroup);
+
+    let comparison = 0;
+
+    switch (filters.sortBy) {
+      case "target":
+        comparison = left.targetLabel.localeCompare(right.targetLabel, "zh-CN");
+        break;
+      case "source":
+        comparison = formatMenuItemSourceCategory(leftMeta.source).localeCompare(
+          formatMenuItemSourceCategory(rightMeta.source),
+          "zh-CN"
+        );
+        break;
+      case "status":
+        comparison = formatMenuItemStatus(leftMeta.status).localeCompare(
+          formatMenuItemStatus(rightMeta.status),
+          "zh-CN"
+        );
+        break;
+      case "riskLevel":
+        comparison = compareRiskLevel(leftMeta.riskLevel, rightMeta.riskLevel);
+        break;
+      case "title":
+      default:
+        comparison = left.title.localeCompare(right.title, "zh-CN");
+        break;
+    }
+
+    if (comparison === 0) {
+      comparison = left.title.localeCompare(right.title, "zh-CN");
+    }
+
+    return filters.sortDirection === "desc" ? comparison * -1 : comparison;
   });
 }

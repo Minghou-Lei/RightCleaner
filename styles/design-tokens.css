@@ -97,6 +97,7 @@
   --shadow-sm: 0 1px 2px rgba(15, 34, 33, 0.06);
   --shadow-md: 0 8px 24px rgba(17, 38, 37, 0.08);
   --shadow-lg: 0 18px 50px rgba(17, 38, 37, 0.12);
+  --shadow-glow: 0 20px 50px rgba(45, 108, 223, 0.08);
 
   /* Motion */
   --duration-fast: 140ms;
@@ -135,8 +136,12 @@
 
 html {
   font-family: var(--font-sans);
-  background: radial-gradient(circle at top, #fdfefd 0%, var(--color-bg) 52%, #eaf1f0 100%);
+  background:
+    radial-gradient(circle at top left, rgba(20, 162, 154, 0.08), transparent 28%),
+    radial-gradient(circle at top right, rgba(45, 108, 223, 0.08), transparent 24%),
+    linear-gradient(180deg, #fcfefd 0%, var(--color-bg) 48%, #ebf2f1 100%);
   color: var(--color-text);
+  scroll-behavior: smooth;
 }
 
 body {
@@ -163,6 +168,13 @@ body {
     transform var(--duration-fast) var(--ease-standard);
 }
 
+a,
+button,
+input,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
+
 :focus-visible {
   outline: none;
   box-shadow: 0 0 0 4px var(--color-focus-ring);
@@ -179,15 +191,16 @@ body {
 }
 
 .rc-surface {
-  background: color-mix(in srgb, var(--surface-panel) 88%, var(--color-bg-elevated) 12%);
+  background: color-mix(in srgb, var(--surface-panel) 90%, var(--color-bg-elevated) 10%);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-md), var(--shadow-glow);
+  backdrop-filter: blur(14px);
 }
 
 .rc-card {
   padding: var(--space-6);
-  background: var(--surface-panel);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(249, 252, 251, 0.96) 100%);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
@@ -201,7 +214,13 @@ body {
   letter-spacing: -0.03em;
 }
 
+.rc-title--hero {
+  max-width: 12ch;
+  font-size: clamp(2.25rem, 4vw, 3.5rem);
+}
+
 .rc-body {
+  margin: 0;
   font-size: var(--text-md);
   line-height: var(--leading-normal);
   color: var(--text-secondary);
@@ -220,6 +239,7 @@ body {
   font-weight: var(--weight-semibold);
   text-decoration: none;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .rc-button:hover {
@@ -228,6 +248,13 @@ body {
 
 .rc-button:active {
   transform: translateY(0);
+}
+
+.rc-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
+  box-shadow: none;
 }
 
 .rc-button-primary {
@@ -241,9 +268,19 @@ body {
 }
 
 .rc-button-secondary {
-  background: var(--color-surface);
+  background: rgba(255, 255, 255, 0.76);
   border-color: var(--color-border);
   color: var(--color-text);
+}
+
+.rc-button-danger {
+  background: linear-gradient(180deg, #d25d5d 0%, var(--color-danger) 100%);
+  color: var(--color-text-inverse);
+  box-shadow: 0 10px 24px rgba(195, 73, 73, 0.24);
+}
+
+.rc-button-danger:hover {
+  background: linear-gradient(180deg, #c95353 0%, #b03f3f 100%);
 }
 
 .rc-input {
@@ -280,4 +317,53 @@ body {
   font-weight: var(--weight-semibold);
   background: var(--color-brand-soft);
   color: var(--color-brand-strong);
+}
+
+.rc-section-copy,
+.rc-status-heading,
+.rc-brand-lockup {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.rc-brand-mark,
+.rc-icon-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(15, 138, 131, 0.12);
+  background: linear-gradient(180deg, rgba(20, 162, 154, 0.14) 0%, rgba(20, 162, 154, 0.06) 100%);
+  color: var(--color-brand-strong);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.rc-brand-mark {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 1rem;
+}
+
+.rc-icon-chip--brand {
+  color: var(--color-brand-strong);
+}
+
+.rc-icon-chip--accent {
+  border-color: rgba(45, 108, 223, 0.16);
+  background: linear-gradient(180deg, rgba(45, 108, 223, 0.14) 0%, rgba(45, 108, 223, 0.06) 100%);
+  color: var(--color-accent);
+}
+
+.rc-icon-chip--danger {
+  border-color: rgba(195, 73, 73, 0.14);
+  background: linear-gradient(180deg, rgba(195, 73, 73, 0.14) 0%, rgba(195, 73, 73, 0.06) 100%);
+  color: var(--color-danger);
+}
+
+.rc-stack--tight {
+  gap: var(--space-1);
 }

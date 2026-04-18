@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { Link } from "react-router-dom";
 
 import {
   analyzeNormalizedMenuItem,
@@ -29,6 +30,8 @@ export function BatchReviewPage() {
         (duplicateCounts.get(item.canonicalTitle) ?? 0) > 1 ? item.canonicalTitle : null
       ),
     }));
+  const editableCount = selectedItems.filter(({ item }) => item.editable).length;
+  const enabledCount = selectedItems.filter(({ item }) => item.enabled).length;
 
   return (
     <section className="rc-screen">
@@ -42,34 +45,56 @@ export function BatchReviewPage() {
       <div className="rc-grid rc-grid--two">
         <section className="rc-card">
           <h3>已选项目</h3>
-          <div className="rc-stack">
-            {selectedItems.map(({ item, detection }) => (
-              <article className="rc-list-card" key={item.id}>
-                <div>
-                  <strong>{item.title}</strong>
-                  <p className="rc-body">
-                    {formatMenuSourceKind(item.sourceKind)} · {item.targetLabel}
-                  </p>
-                  {detection.tags.length > 0 ? (
-                    <div className="rc-tag-row">
-                      {detection.tags.map((tag) => (
-                        <span className="rc-pill rc-pill--info" key={tag}>
-                          {getDetectionTagLabel(tag)}
-                        </span>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-                <span className={`rc-pill rc-pill--${detection.badgeTone}`}>{detection.headline}</span>
-              </article>
-            ))}
-          </div>
+          {selectedItems.length === 0 ? (
+            <div className="rc-empty-state rc-empty-state--compact">
+              <h3>还没有加入任何批量项</h3>
+              <p className="rc-body">回到清理列表勾选项目后，这里会汇总风险、来源和后续执行动作。</p>
+              <Link className="rc-button rc-button-secondary" to="/cleanup">
+                去选择菜单项
+              </Link>
+            </div>
+          ) : (
+            <div className="rc-stack">
+              {selectedItems.map(({ item, detection }) => (
+                <article className="rc-list-card" key={item.id}>
+                  <div>
+                    <strong>{item.title}</strong>
+                    <p className="rc-body">
+                      {formatMenuSourceKind(item.sourceKind)} · {item.targetLabel}
+                    </p>
+                    {detection.tags.length > 0 ? (
+                      <div className="rc-tag-row">
+                        {detection.tags.map((tag) => (
+                          <span className="rc-pill rc-pill--info" key={tag}>
+                            {getDetectionTagLabel(tag)}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                  <span className={`rc-pill rc-pill--${detection.badgeTone}`}>{detection.headline}</span>
+                </article>
+              ))}
+            </div>
+          )}
         </section>
         <section className="rc-card">
           <h3>执行配置</h3>
-          <p className="rc-body">
-            当前批量页用于汇总风险标签、来源范围和后续动作。禁用、快照、恢复、历史记录与权限提示能力会在这一页逐步串联。
-          </p>
+          {selectedItems.length === 0 ? (
+            <p className="rc-body">当前没有待处理集合，因此不会触发批量确认或危险操作提示。</p>
+          ) : (
+            <div className="rc-stack">
+              <p className="rc-body">
+                已选 {selectedItems.length} 项，其中 {editableCount} 项可修改，{enabledCount} 项当前处于启用状态。
+              </p>
+              <p className="rc-body">
+                危险操作会先回到清理列表触发确认弹窗，再明确告知只读跳过项、已处于目标状态的项目数量和最终执行范围。
+              </p>
+              <Link className="rc-button rc-button-primary" to="/cleanup">
+                返回清理列表继续处理
+              </Link>
+            </div>
+          )}
         </section>
       </div>
     </section>
