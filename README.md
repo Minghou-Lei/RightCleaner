@@ -26,6 +26,18 @@
   基于 <strong>Codex + Vibe Kanban</strong> 端到端驱动开发。
 </p>
 
+## Important Notice
+
+> This repository is primarily a `vibe coding` workflow test built with multiple subagents under a `Codex + Vibe Kanban` process.
+> It should not be treated as a production-grade Windows system utility.
+> The current implementation does **not** guarantee that the product is free of bugs, safe for all environments, or incapable of damaging user data, shell behavior, or the local Windows system.
+> If you choose to run it, do so only on machines you control and only after creating proper backups or restore points.
+
+> 本仓库本质上是一次基于多个 subagent 的 `vibe coding` 流程测试，运行在 `Codex + Vibe Kanban` 的开发流程之上。
+> 它不应被视为已经达到生产可用标准的 Windows 系统工具。
+> 当前实现 **不保证** 产品不存在 bug，也 **不保证** 不会影响用户数据、右键菜单行为或本地 Windows 系统。
+> 如果你决定运行它，请仅在你可控的机器上使用，并且务必提前做好完整备份或恢复点。
+
 ---
 
 ## Preview
