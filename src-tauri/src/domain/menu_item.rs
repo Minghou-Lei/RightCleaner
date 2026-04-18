@@ -1,6 +1,6 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum MenuSourceKind {
     ShellVerb,
@@ -8,7 +8,7 @@ pub enum MenuSourceKind {
     CommandStore,
 }
 
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum MenuTargetKind {
     File,
@@ -20,7 +20,7 @@ pub enum MenuTargetKind {
     AllFileSystemObjects,
 }
 
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum MenuVisibility {
     Primary,
@@ -28,7 +28,7 @@ pub enum MenuVisibility {
     ProgrammaticOnly,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MenuTraceValue {
     pub name: String,
@@ -37,7 +37,7 @@ pub struct MenuTraceValue {
     pub source_path: String,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MenuCommandInfo {
     pub verb: Option<String>,
@@ -47,7 +47,7 @@ pub struct MenuCommandInfo {
     pub sub_commands: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MenuTraceInfo {
     pub registration_path: String,
@@ -57,7 +57,7 @@ pub struct MenuTraceInfo {
     pub notes: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NormalizedMenuItem {
     pub id: String,
@@ -74,4 +74,34 @@ pub struct NormalizedMenuItem {
     pub handler_clsid: Option<String>,
     pub trace: MenuTraceInfo,
     pub tags: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum MenuItemBackupAction {
+    Enable,
+    Disable,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum MenuItemBackupStatus {
+    Ready,
+    Restored,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MenuItemBackupRecord {
+    pub id: String,
+    pub item_id: String,
+    pub item_title: String,
+    pub registry_path: String,
+    pub label: String,
+    pub created_at: String,
+    pub action: MenuItemBackupAction,
+    pub status: MenuItemBackupStatus,
+    pub previous_enabled: bool,
+    pub resulting_enabled: bool,
+    pub previous_legacy_disable: Option<String>,
 }

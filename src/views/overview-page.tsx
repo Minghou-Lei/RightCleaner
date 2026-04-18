@@ -123,7 +123,7 @@ export function OverviewPage() {
                     <strong>{backup.label}</strong>
                     <p className="rc-body">等待菜单项扫描完成后，这里会显示真实结果。</p>
                   </div>
-                  <span className="rc-pill rc-pill--info">{backup.sizeLabel}</span>
+                  <span className="rc-pill rc-pill--info">{backup.status}</span>
                 </article>
               ))}
           </div>

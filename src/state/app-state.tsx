@@ -5,14 +5,22 @@ import {
   useEffect,
   useMemo,
   useReducer,
+  useState,
+  useCallback,
   startTransition,
   type Dispatch,
   type PropsWithChildren,
 } from "react";
 
-import { loadMenuItems } from "../shared/menu-item-service";
+import {
+  loadMenuItems,
+  loadRecoveryPoints,
+  restoreRecoveryPoint,
+  setMenuItemEnabled,
+} from "../shared/menu-item-service";
 import {
   filterMenuItems,
+  type MenuItemBackupRecord,
   type MenuItemFilterState,
   type NormalizedMenuItem,
 } from "../shared/menu-items";
@@ -29,14 +37,6 @@ export type AppPhase =
 
 export type ThemeMode = "light" | "system";
 
-export type BackupRecord = {
-  id: string;
-  label: string;
-  createdAt: string;
-  sizeLabel: string;
-  status: "ready" | "expired" | "restored";
-};
-
 export type MenuLoadState = "idle" | "loading" | "ready" | "error";
 
 export type AppState = {
@@ -44,10 +44,11 @@ export type AppState = {
   themeMode: ThemeMode;
   menuLoadState: MenuLoadState;
   menuLoadError: string | null;
+  operationError: string | null;
   selectedItemIds: string[];
   filters: MenuItemFilterState;
   menuItems: NormalizedMenuItem[];
-  backups: BackupRecord[];
+  backups: MenuItemBackupRecord[];
   scannedScopeCount: number;
   lastScanSummary: string;
 };
@@ -57,33 +58,19 @@ type AppAction =
   | { type: "set-theme-mode"; themeMode: ThemeMode }
   | { type: "set-menu-load-state"; menuLoadState: MenuLoadState }
   | { type: "hydrate-menu-items"; items: NormalizedMenuItem[] }
+  | { type: "hydrate-backups"; backups: MenuItemBackupRecord[] }
   | { type: "set-menu-load-error"; message: string }
+  | { type: "set-operation-error"; message: string | null }
   | { type: "toggle-item-selection"; itemId: string }
   | { type: "clear-selection" }
   | { type: "set-filter"; filter: Partial<MenuItemFilterState> };
-
-const seedBackups: BackupRecord[] = [
-  {
-    id: "backup-0415",
-    label: "周二快速清理",
-    createdAt: "2026-04-15 18:40",
-    sizeLabel: "1.2 GB",
-    status: "ready",
-  },
-  {
-    id: "backup-0410",
-    label: "应用缓存回滚点",
-    createdAt: "2026-04-10 09:15",
-    sizeLabel: "640 MB",
-    status: "ready",
-  },
-];
 
 const initialState: AppState = {
   phase: "idle",
   themeMode: "light",
   menuLoadState: "idle",
   menuLoadError: null,
+  operationError: null,
   selectedItemIds: [],
   filters: {
     keyword: "",
@@ -93,7 +80,7 @@ const initialState: AppState = {
     editableOnly: false,
   },
   menuItems: [],
-  backups: seedBackups,
+  backups: [],
   scannedScopeCount: 0,
   lastScanSummary: "等待首次扫描",
 };
@@ -118,6 +105,7 @@ function reducer(state: AppState, action: AppAction): AppState {
         menuItems: action.items,
         menuLoadState: "ready",
         menuLoadError: null,
+        operationError: null,
         selectedItemIds:
           nextSelectedItemIds.length > 0
             ? nextSelectedItemIds
@@ -128,6 +116,11 @@ function reducer(state: AppState, action: AppAction): AppState {
         lastScanSummary: `已识别 ${action.items.length} 个菜单项，覆盖 ${scannedScopeCount} 个对象场景。`,
       };
     }
+    case "hydrate-backups":
+      return {
+        ...state,
+        backups: action.backups,
+      };
     case "set-menu-load-error":
       return {
         ...state,
@@ -135,6 +128,11 @@ function reducer(state: AppState, action: AppAction): AppState {
         menuLoadState: "error",
         menuLoadError: action.message,
         lastScanSummary: "菜单项加载失败，当前使用回退数据。",
+      };
+    case "set-operation-error":
+      return {
+        ...state,
+        operationError: action.message,
       };
     case "toggle-item-selection": {
       const exists = state.selectedItemIds.includes(action.itemId);
@@ -163,27 +161,99 @@ function reducer(state: AppState, action: AppAction): AppState {
 type AppStateContextValue = {
   state: AppState;
   dispatch: Dispatch<AppAction>;
+  activeItemId: string | null;
+  activeBackupId: string | null;
+  reloadAppData: () => Promise<void>;
+  toggleMenuItemEnabled: (itemId: string, enabled: boolean) => Promise<void>;
+  restoreBackup: (backupId: string) => Promise<void>;
 };
 
 const AppStateContext = createContext<AppStateContextValue | null>(null);
 
 export function AppStateProvider({ children }: PropsWithChildren) {
   const [state, dispatch] = useReducer(reducer, initialState);
-  const value = useMemo(() => ({ state, dispatch }), [state]);
+  const [activeItemId, setActiveItemId] = useState<string | null>(null);
+  const [activeBackupId, setActiveBackupId] = useState<string | null>(null);
+
+  const reloadAppData = useCallback(async () => {
+    dispatch({ type: "set-menu-load-state", menuLoadState: "loading" });
+
+    try {
+      const [items, backups] = await Promise.all([loadMenuItems(), loadRecoveryPoints()]);
+
+      startTransition(() => {
+        dispatch({ type: "hydrate-menu-items", items });
+        dispatch({ type: "hydrate-backups", backups });
+      });
+    } catch (error: unknown) {
+      dispatch({
+        type: "set-menu-load-error",
+        message: error instanceof Error ? error.message : "菜单项加载失败",
+      });
+    }
+  }, []);
+
+  const toggleMenuItemEnabled = useCallback(async (itemId: string, enabled: boolean) => {
+    setActiveItemId(itemId);
+    dispatch({ type: "set-operation-error", message: null });
+
+    try {
+      await setMenuItemEnabled(itemId, enabled);
+      await reloadAppData();
+    } catch (error: unknown) {
+      dispatch({
+        type: "set-operation-error",
+        message: error instanceof Error ? error.message : "菜单项状态更新失败",
+      });
+    } finally {
+      setActiveItemId(null);
+    }
+  }, [reloadAppData]);
+
+  const restoreBackup = useCallback(async (backupId: string) => {
+    setActiveBackupId(backupId);
+    dispatch({ type: "set-operation-error", message: null });
+
+    try {
+      await restoreRecoveryPoint(backupId);
+      await reloadAppData();
+    } catch (error: unknown) {
+      dispatch({
+        type: "set-operation-error",
+        message: error instanceof Error ? error.message : "恢复操作失败",
+      });
+    } finally {
+      setActiveBackupId(null);
+    }
+  }, [reloadAppData]);
+
+  const value = useMemo(
+    () => ({
+      state,
+      dispatch,
+      activeItemId,
+      activeBackupId,
+      reloadAppData,
+      toggleMenuItemEnabled,
+      restoreBackup,
+    }),
+    [activeBackupId, activeItemId, reloadAppData, restoreBackup, state, toggleMenuItemEnabled]
+  );
 
   useEffect(() => {
     let active = true;
 
     dispatch({ type: "set-menu-load-state", menuLoadState: "loading" });
 
-    loadMenuItems()
-      .then((items) => {
+    Promise.all([loadMenuItems(), loadRecoveryPoints()])
+      .then(([items, backups]) => {
         if (!active) {
           return;
         }
 
         startTransition(() => {
           dispatch({ type: "hydrate-menu-items", items });
+          dispatch({ type: "hydrate-backups", backups });
         });
       })
       .catch((error: unknown) => {

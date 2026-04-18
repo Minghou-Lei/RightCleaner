@@ -302,7 +302,7 @@ fn scan_shell_extensions(
             target: spec.target.clone(),
             target_label: spec.source_label.to_string(),
             enabled: !key_data.values.contains_key("LegacyDisable"),
-            editable: true,
+            editable: false,
             visibility: detect_visibility(&key_data.values),
             command: None,
             handler_clsid: default_value.clone(),
@@ -312,8 +312,14 @@ fn scan_shell_extensions(
                 command_store_paths: Vec::new(),
                 source_values: collect_trace_values(&key_data),
                 notes: match default_value {
-                    Some(clsid) => vec![format!("ContextMenuHandlers CLSID {}", clsid)],
-                    None => vec!["ContextMenuHandlers 项未写入默认 CLSID。".to_string()],
+                    Some(clsid) => vec![
+                        format!("ContextMenuHandlers CLSID {}", clsid),
+                        "当前版本仅对 Shell Verb / Command Store 提供安全启用开关。".to_string(),
+                    ],
+                    None => vec![
+                        "ContextMenuHandlers 项未写入默认 CLSID。".to_string(),
+                        "当前版本仅对 Shell Verb / Command Store 提供安全启用开关。".to_string(),
+                    ],
                 },
             },
             tags: vec![

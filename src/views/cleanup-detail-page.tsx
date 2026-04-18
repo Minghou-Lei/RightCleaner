@@ -10,7 +10,9 @@ import { useAppState } from "../state/app-state";
 export function CleanupDetailPage() {
   const { itemId } = useParams();
   const {
-    state: { menuItems },
+    state: { menuItems, operationError },
+    activeItemId,
+    toggleMenuItemEnabled,
   } = useAppState();
 
   const item =
@@ -56,6 +58,14 @@ export function CleanupDetailPage() {
           </p>
         </div>
         <div className="rc-hero__actions">
+          <button
+            className="rc-button rc-button-primary"
+            disabled={!item.editable || activeItemId === item.id}
+            onClick={() => void toggleMenuItemEnabled(item.id, !item.enabled)}
+            type="button"
+          >
+            {activeItemId === item.id ? "处理中..." : item.enabled ? "禁用该项" : "重新启用"}
+          </button>
           <Link className="rc-button rc-button-secondary" to="/cleanup">
             返回列表
           </Link>
@@ -64,6 +74,8 @@ export function CleanupDetailPage() {
           </Link>
         </div>
       </header>
+
+      {operationError ? <p className="rc-body">{operationError}</p> : null}
 
       <div className="rc-grid rc-grid--two">
         <section className="rc-card">

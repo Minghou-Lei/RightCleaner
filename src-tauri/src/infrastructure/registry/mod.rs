@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::fmt;
 
 #[cfg(windows)]
@@ -7,8 +7,8 @@ use std::io::ErrorKind;
 #[cfg(windows)]
 use winreg::{
     enums::{
-        HKEY_CLASSES_ROOT, HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE, REG_BINARY, REG_DWORD,
-        REG_DWORD_BIG_ENDIAN, REG_EXPAND_SZ, REG_MULTI_SZ, REG_NONE, REG_QWORD, REG_SZ,
+        HKEY_CLASSES_ROOT, HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE, KEY_READ, KEY_WRITE, REG_BINARY,
+        REG_DWORD, REG_DWORD_BIG_ENDIAN, REG_EXPAND_SZ, REG_MULTI_SZ, REG_NONE, REG_QWORD, REG_SZ,
     },
     RegKey, RegValue,
 };
@@ -31,7 +31,7 @@ const CONTEXT_MENU_CLASSES_RELATIVE_PATHS: &[&str] = &[
     "DesktopBackground\\shellex\\ContextMenuHandlers",
 ];
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum RegistryRoot {
     CurrentUser,
@@ -70,7 +70,7 @@ impl fmt::Display for RegistryRoot {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RegistryLocation {
     pub root: RegistryRoot,
     pub key_path: String,
@@ -92,6 +92,32 @@ impl RegistryLocation {
         format!("{}\\{}", self.root.as_str(), self.key_path)
     }
 
+    pub fn parse_full_path(path: &str) -> Option<Self> {
+        let normalized = normalize_registry_path(path);
+        let mut segments = normalized.split('\\');
+        let root = segments.next()?;
+        let remainder = segments.collect::<Vec<_>>().join("\\");
+
+        match root.to_ascii_uppercase().as_str() {
+            "HKCR" | "HKEY_CLASSES_ROOT" => Some(Self::new(RegistryRoot::ClassesRoot, remainder)),
+            "HKCU" | "HKEY_CURRENT_USER" => {
+                if let Some(stripped) = strip_classes_prefix(&remainder) {
+                    Some(Self::new(RegistryRoot::CurrentUserClasses, stripped))
+                } else {
+                    Some(Self::new(RegistryRoot::CurrentUser, remainder))
+                }
+            }
+            "HKLM" | "HKEY_LOCAL_MACHINE" => {
+                if let Some(stripped) = strip_classes_prefix(&remainder) {
+                    Some(Self::new(RegistryRoot::LocalMachineClasses, stripped))
+                } else {
+                    Some(Self::new(RegistryRoot::LocalMachine, remainder))
+                }
+            }
+            _ => None,
+        }
+    }
+
     #[cfg(windows)]
     fn open_path(&self) -> String {
         match (self.root.fixed_prefix(), self.key_path.is_empty()) {
@@ -102,7 +128,7 @@ impl RegistryLocation {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "value", rename_all = "snake_case")]
 pub enum RegistryData {
     None,
@@ -116,18 +142,24 @@ pub enum RegistryData {
     Unknown(Vec<u8>),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RegistryValueSnapshot {
     pub name: String,
     pub data: RegistryData,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RegistryKeySnapshot {
     pub location: RegistryLocation,
     pub default_value: Option<RegistryData>,
     pub values: Vec<RegistryValueSnapshot>,
     pub subkeys: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RegistryTreeSnapshot {
+    pub key: RegistryKeySnapshot,
+    pub children: Vec<RegistryTreeSnapshot>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -182,6 +214,61 @@ impl WindowsRegistryReader {
             .into_iter()
             .filter_map(|location| self.read_key(&location).transpose())
             .collect()
+    }
+
+    pub fn read_tree(
+        &self,
+        location: &RegistryLocation,
+    ) -> Result<Option<RegistryTreeSnapshot>, RegistryError> {
+        self.read_tree_inner(location)
+    }
+
+    fn read_tree_inner(
+        &self,
+        location: &RegistryLocation,
+    ) -> Result<Option<RegistryTreeSnapshot>, RegistryError> {
+        let Some(key) = self.read_key(location)? else {
+            return Ok(None);
+        };
+
+        let mut children = Vec::new();
+        for subkey in &key.subkeys {
+            let child_location =
+                RegistryLocation::new(location.root, format!("{}\\{}", location.key_path, subkey));
+            if let Some(child) = self.read_tree_inner(&child_location)? {
+                children.push(child);
+            }
+        }
+
+        Ok(Some(RegistryTreeSnapshot { key, children }))
+    }
+
+    pub fn restore_tree(&self, snapshot: &RegistryTreeSnapshot) -> Result<(), RegistryError> {
+        #[cfg(not(windows))]
+        {
+            let _ = snapshot;
+            Err(RegistryError::UnsupportedPlatform)
+        }
+
+        #[cfg(windows)]
+        {
+            write_tree_snapshot(snapshot)?;
+            Ok(())
+        }
+    }
+
+    pub fn delete_tree(&self, location: &RegistryLocation) -> Result<(), RegistryError> {
+        #[cfg(not(windows))]
+        {
+            let _ = location;
+            Err(RegistryError::UnsupportedPlatform)
+        }
+
+        #[cfg(windows)]
+        {
+            delete_tree_snapshot(location)?;
+            Ok(())
+        }
     }
 }
 
@@ -255,6 +342,18 @@ fn normalize_registry_path(path: &str) -> String {
         .join("\\")
 }
 
+fn strip_classes_prefix(path: &str) -> Option<String> {
+    let upper = path.to_ascii_uppercase();
+    let prefix = CLASSES_PREFIX.to_ascii_uppercase();
+    if upper == prefix {
+        return Some(String::new());
+    }
+
+    upper
+        .strip_prefix(&(prefix + "\\"))
+        .map(|_| path[prefix.len() + 1..].to_string())
+}
+
 #[cfg(windows)]
 fn root_key(root: RegistryRoot) -> RegKey {
     match root {
@@ -269,6 +368,15 @@ fn root_key(root: RegistryRoot) -> RegKey {
 #[cfg(windows)]
 fn open_registry_key(root: &RegKey, path: &str) -> Result<Option<RegKey>, String> {
     match root.open_subkey(path) {
+        Ok(key) => Ok(Some(key)),
+        Err(error) if error.kind() == ErrorKind::NotFound => Ok(None),
+        Err(error) => Err(error.to_string()),
+    }
+}
+
+#[cfg(windows)]
+fn open_registry_key_with_flags(root: &RegKey, path: &str, flags: u32) -> Result<Option<RegKey>, String> {
+    match root.open_subkey_with_flags(path, flags) {
         Ok(key) => Ok(Some(key)),
         Err(error) if error.kind() == ErrorKind::NotFound => Ok(None),
         Err(error) => Err(error.to_string()),
@@ -321,6 +429,144 @@ fn convert_registry_data(value: &RegValue) -> RegistryData {
         REG_QWORD => RegistryData::U64(read_u64_le(&value.bytes)),
         REG_BINARY => RegistryData::Binary(value.bytes.clone()),
         _ => RegistryData::Unknown(value.bytes.clone()),
+    }
+}
+
+#[cfg(windows)]
+fn encode_utf16_bytes(value: &str) -> Vec<u8> {
+    value
+        .encode_utf16()
+        .chain(std::iter::once(0))
+        .flat_map(|unit| unit.to_le_bytes())
+        .collect()
+}
+
+#[cfg(windows)]
+fn encode_multi_string_bytes(values: &[String]) -> Vec<u8> {
+    values
+        .iter()
+        .flat_map(|entry| entry.encode_utf16().chain(std::iter::once(0)))
+        .chain(std::iter::once(0))
+        .flat_map(|unit| unit.to_le_bytes())
+        .collect()
+}
+
+#[cfg(windows)]
+fn to_reg_value(data: &RegistryData) -> RegValue {
+    match data {
+        RegistryData::None => RegValue {
+            bytes: Vec::new(),
+            vtype: REG_NONE,
+        },
+        RegistryData::String(value) => RegValue {
+            bytes: encode_utf16_bytes(value),
+            vtype: REG_SZ,
+        },
+        RegistryData::ExpandString(value) => RegValue {
+            bytes: encode_utf16_bytes(value),
+            vtype: REG_EXPAND_SZ,
+        },
+        RegistryData::MultiString(values) => RegValue {
+            bytes: encode_multi_string_bytes(values),
+            vtype: REG_MULTI_SZ,
+        },
+        RegistryData::U32(value) => RegValue {
+            bytes: value.to_le_bytes().to_vec(),
+            vtype: REG_DWORD,
+        },
+        RegistryData::U32BigEndian(value) => RegValue {
+            bytes: value.to_be_bytes().to_vec(),
+            vtype: REG_DWORD_BIG_ENDIAN,
+        },
+        RegistryData::U64(value) => RegValue {
+            bytes: value.to_le_bytes().to_vec(),
+            vtype: REG_QWORD,
+        },
+        RegistryData::Binary(bytes) => RegValue {
+            bytes: bytes.clone(),
+            vtype: REG_BINARY,
+        },
+        RegistryData::Unknown(bytes) => RegValue {
+            bytes: bytes.clone(),
+            vtype: REG_BINARY,
+        },
+    }
+}
+
+#[cfg(windows)]
+fn write_tree_snapshot(snapshot: &RegistryTreeSnapshot) -> Result<(), RegistryError> {
+    let root = root_key(snapshot.key.location.root);
+    let path = snapshot.key.location.open_path();
+    let full_path = snapshot.key.location.full_path();
+    let key = if path.is_empty() {
+        root
+    } else {
+        root.create_subkey(&path)
+            .map_err(|error| RegistryError::OpenKey {
+                path: full_path.clone(),
+                message: error.to_string(),
+            })?
+            .0
+    };
+
+    if let Some(default_value) = &snapshot.key.default_value {
+        key.set_raw_value("", &to_reg_value(default_value))
+            .map_err(|error| RegistryError::EnumerateKey {
+                path: full_path.clone(),
+                message: error.to_string(),
+            })?;
+    }
+
+    for value in &snapshot.key.values {
+        key.set_raw_value(&value.name, &to_reg_value(&value.data))
+            .map_err(|error| RegistryError::EnumerateKey {
+                path: full_path.clone(),
+                message: error.to_string(),
+            })?;
+    }
+
+    for child in &snapshot.children {
+        write_tree_snapshot(child)?;
+    }
+
+    Ok(())
+}
+
+#[cfg(windows)]
+fn delete_tree_snapshot(location: &RegistryLocation) -> Result<(), RegistryError> {
+    let path = location.open_path();
+    if path.is_empty() {
+        return Err(RegistryError::OpenKey {
+            path: location.full_path(),
+            message: "refusing to delete a registry root".to_string(),
+        });
+    }
+
+    let Some((parent_path, key_name)) = path.rsplit_once('\\') else {
+        return Err(RegistryError::OpenKey {
+            path: location.full_path(),
+            message: "refusing to delete an unresolved top-level key".to_string(),
+        });
+    };
+
+    let root = root_key(location.root);
+    let Some(parent) = open_registry_key_with_flags(&root, parent_path, KEY_READ | KEY_WRITE).map_err(
+        |message| RegistryError::OpenKey {
+            path: location.full_path(),
+            message,
+        },
+    )?
+    else {
+        return Ok(());
+    };
+
+    match parent.delete_subkey_all(key_name) {
+        Ok(()) => Ok(()),
+        Err(error) if error.kind() == ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(RegistryError::OpenKey {
+            path: location.full_path(),
+            message: error.to_string(),
+        }),
     }
 }
 
@@ -400,6 +646,26 @@ mod tests {
             RegistryRoot::ClassesRoot,
             "DesktopBackground\\shell"
         )));
+    }
+
+    #[test]
+    fn parses_classes_paths_from_full_path() {
+        let location =
+            RegistryLocation::parse_full_path("HKEY_CURRENT_USER\\Software\\Classes\\Directory\\shell\\Foo")
+                .expect("expected a parsed location");
+
+        assert_eq!(location.root, RegistryRoot::CurrentUserClasses);
+        assert_eq!(location.key_path, "Directory\\shell\\Foo");
+    }
+
+    #[test]
+    fn parses_hkcr_paths_from_full_path() {
+        let location =
+            RegistryLocation::parse_full_path("HKCR\\Directory\\Background\\shell\\Bar")
+                .expect("expected a parsed location");
+
+        assert_eq!(location.root, RegistryRoot::ClassesRoot);
+        assert_eq!(location.key_path, "Directory\\Background\\shell\\Bar");
     }
 
     #[cfg(windows)]

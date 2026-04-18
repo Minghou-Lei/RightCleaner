@@ -1,6 +1,11 @@
 import { invoke } from "@tauri-apps/api/core";
 
-import type { NormalizedMenuItem } from "./menu-items";
+import type {
+  MenuItemBackupRecord,
+  MenuItemMutationResult,
+  MenuItemPermissionSummary,
+  NormalizedMenuItem,
+} from "./menu-items";
 
 const fallbackMenuItems: NormalizedMenuItem[] = [
   {
@@ -19,7 +24,7 @@ const fallbackMenuItems: NormalizedMenuItem[] = [
       command: "\"C:\\\\Program Files\\\\Microsoft VS Code\\\\Code.exe\" \"%1\"",
       delegateExecute: null,
       explorerCommandHandler: null,
-      subCommands: []
+      subCommands: [],
     },
     handlerClsid: null,
     trace: {
@@ -31,12 +36,12 @@ const fallbackMenuItems: NormalizedMenuItem[] = [
           name: "MUIVerb",
           valueType: "REG_SZ",
           data: "Open with Code",
-          sourcePath: "HKEY_CLASSES_ROOT\\*\\shell\\OpenWithCode"
-        }
+          sourcePath: "HKEY_CLASSES_ROOT\\*\\shell\\OpenWithCode",
+        },
       ],
-      notes: ["当前为前端回退数据，用于非 Tauri 环境预览。"]
+      notes: ["当前为前端回退数据，用于非 Tauri 环境预览。"],
     },
-    tags: ["fallback", "verb", "file"]
+    tags: ["fallback", "verb", "file"],
   },
   {
     id: "shell-extension-7zip",
@@ -47,7 +52,7 @@ const fallbackMenuItems: NormalizedMenuItem[] = [
     target: "directory",
     targetLabel: "目录",
     enabled: true,
-    editable: true,
+    editable: false,
     visibility: "primary",
     command: null,
     handlerClsid: "{23170F69-40C1-278A-1000-000100020000}",
@@ -60,12 +65,12 @@ const fallbackMenuItems: NormalizedMenuItem[] = [
           name: "(Default)",
           valueType: "REG_SZ",
           data: "{23170F69-40C1-278A-1000-000100020000}",
-          sourcePath: "HKEY_CLASSES_ROOT\\Directory\\shellex\\ContextMenuHandlers\\7-Zip"
-        }
+          sourcePath: "HKEY_CLASSES_ROOT\\Directory\\shellex\\ContextMenuHandlers\\7-Zip",
+        },
       ],
-      notes: ["当前为前端回退数据，用于非 Tauri 环境预览。"]
+      notes: ["当前为前端回退数据，用于非 Tauri 环境预览。"],
     },
-    tags: ["fallback", "handler", "directory"]
+    tags: ["fallback", "handler", "directory"],
   },
   {
     id: "command-store-windows-terminal",
@@ -83,7 +88,7 @@ const fallbackMenuItems: NormalizedMenuItem[] = [
       command: "\"C:\\\\Program Files\\\\WindowsApps\\\\Microsoft.WindowsTerminal\\\\wt.exe\" -d \"%V\"",
       delegateExecute: null,
       explorerCommandHandler: null,
-      subCommands: ["WindowsTerminal"]
+      subCommands: ["WindowsTerminal"],
     },
     handlerClsid: null,
     trace: {
@@ -92,7 +97,7 @@ const fallbackMenuItems: NormalizedMenuItem[] = [
       commandPath:
         "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\CommandStore\\shell\\WindowsTerminal\\command",
       commandStorePaths: [
-        "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\CommandStore\\shell\\WindowsTerminal"
+        "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\CommandStore\\shell\\WindowsTerminal",
       ],
       sourceValues: [
         {
@@ -100,12 +105,12 @@ const fallbackMenuItems: NormalizedMenuItem[] = [
           valueType: "REG_SZ",
           data: "Windows Terminal",
           sourcePath:
-            "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\CommandStore\\shell\\WindowsTerminal"
-        }
+            "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\CommandStore\\shell\\WindowsTerminal",
+        },
       ],
-      notes: ["当前为前端回退数据，用于非 Tauri 环境预览。"]
+      notes: ["当前为前端回退数据，用于非 Tauri 环境预览。"],
     },
-    tags: ["fallback", "command-store", "directory-background"]
+    tags: ["fallback", "command-store", "directory-background"],
   },
   {
     id: "orphan-shell-entry",
@@ -125,10 +130,26 @@ const fallbackMenuItems: NormalizedMenuItem[] = [
       commandPath: null,
       commandStorePaths: [],
       sourceValues: [],
-      notes: ["当前为前端回退数据，用于验证来源不明与失效项识别。"]
+      notes: ["当前为前端回退数据，用于验证来源不明与失效项识别。"],
     },
-    tags: ["fallback", "unknown-source", "directory"]
-  }
+    tags: ["fallback", "unknown-source", "directory"],
+  },
+];
+
+const fallbackRecoveryPoints: MenuItemBackupRecord[] = [
+  {
+    id: "toggle-1713490000",
+    itemId: "shell-verb-open-code",
+    itemTitle: "Open with Code",
+    registryPath: "HKEY_CLASSES_ROOT\\*\\shell\\OpenWithCode",
+    label: "禁用 Open with Code",
+    createdAt: "1713490000",
+    action: "disable",
+    status: "ready",
+    previousEnabled: true,
+    resultingEnabled: false,
+    previousLegacyDisable: null,
+  },
 ];
 
 export async function loadMenuItems() {
@@ -136,5 +157,69 @@ export async function loadMenuItems() {
     return await invoke<NormalizedMenuItem[]>("list_menu_items");
   } catch {
     return fallbackMenuItems;
+  }
+}
+
+export async function setMenuItemEnabled(itemId: string, enabled: boolean) {
+  await invoke("set_menu_item_enabled", { itemId, enabled });
+}
+
+export async function loadRecoveryPoints() {
+  try {
+    return await invoke<MenuItemBackupRecord[]>("list_recovery_points");
+  } catch {
+    return fallbackRecoveryPoints;
+  }
+}
+
+export async function restoreRecoveryPoint(backupId: string) {
+  await invoke("restore_recovery_point", { backupId });
+}
+
+function buildFallbackPermissionSummary(registrationPath: string): MenuItemPermissionSummary {
+  const upper = registrationPath.toUpperCase();
+  const requiresElevation =
+    upper.startsWith("HKEY_LOCAL_MACHINE\\") ||
+    upper.startsWith("HKLM\\") ||
+    upper.startsWith("HKEY_CLASSES_ROOT\\") ||
+    upper.startsWith("HKCR\\");
+
+  return {
+    registrationPath,
+    requiresElevation,
+    isProcessElevated: false,
+    canWriteWithoutElevation: !requiresElevation,
+    recommendedAction: requiresElevation ? "需要管理员提权后才能执行修改" : "可以直接执行修改",
+    warning: requiresElevation
+      ? "当前为前端回退环境，无法真正提权；正式桌面端会先申请管理员授权。"
+      : null,
+  };
+}
+
+export async function inspectMenuItemPermissions(registrationPath: string) {
+  try {
+    return await invoke<MenuItemPermissionSummary>("inspect_menu_item_permissions", {
+      registrationPath,
+    });
+  } catch {
+    return buildFallbackPermissionSummary(registrationPath);
+  }
+}
+
+export async function disableMenuItem(registrationPath: string) {
+  try {
+    return await invoke<MenuItemMutationResult>("disable_menu_item", {
+      registrationPath,
+    });
+  } catch {
+    return {
+      registrationPath,
+      status: "failed",
+      requiresElevation: buildFallbackPermissionSummary(registrationPath).requiresElevation,
+      wasElevated: false,
+      rollbackPerformed: false,
+      backupFilePath: null,
+      message: "当前为前端回退环境，未执行真实注册表修改。",
+    } satisfies MenuItemMutationResult;
   }
 }

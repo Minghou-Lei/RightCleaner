@@ -68,7 +68,7 @@ export function BatchReviewPage() {
         <section className="rc-card">
           <h3>执行配置</h3>
           <p className="rc-body">
-            批量操作会保留异常、重复、已隐藏和来源不明标记，避免在确认页丢失风险语义。
+            当前批量页用于汇总风险标签、来源范围和后续动作。禁用、快照、恢复、历史记录与权限提示能力会在这一页逐步串联。
           </p>
         </section>
       </div>
