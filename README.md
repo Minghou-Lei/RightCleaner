@@ -47,3 +47,11 @@ Product definition and interaction design documents live under `docs/`:
 - `docs/MIN-39-mvp-boundary.md`: MVP scope, non-goals, and release priorities
 - `docs/MIN-42-technical-architecture.md`: desktop framework, UI stack, system operation path, and permission model
 - `docs/product/MIN-40-information-architecture.md`: information architecture and core user flows
+- `docs/product/MIN-45-settings-logging-diagnostics.md`: local settings storage, operation logs, error records, and diagnostic bundle design
+
+Structured contracts for future app implementation live under `specs/`:
+
+- `specs/settings/settings.schema.json`: versioned local settings schema
+- `specs/diagnostics/operation-log.schema.json`: structured operation event schema
+- `specs/diagnostics/error-report.schema.json`: local error record and export schema
+- `specs/diagnostics/diagnostic-bundle.schema.json`: diagnostic export manifest schema

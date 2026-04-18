@@ -1,0 +1,177 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rightcleaner.local/schemas/error-report.schema.json",
+  "title": "RightCleaner Error Report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "error_id",
+    "timestamp",
+    "severity",
+    "error_code",
+    "error_type",
+    "user_message",
+    "developer_message",
+    "session_id",
+    "operation_id",
+    "trace_id",
+    "context",
+    "environment",
+    "redaction",
+    "log_refs"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "error_id": {
+      "type": "string",
+      "minLength": 8
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["warning", "error", "fatal"]
+    },
+    "error_code": {
+      "type": "string",
+      "pattern": "^[A-Z0-9_]{4,64}$"
+    },
+    "error_type": {
+      "type": "string",
+      "enum": [
+        "io_failure",
+        "permission_denied",
+        "scan_failure",
+        "cleanup_failure",
+        "backup_failure",
+        "restore_failure",
+        "settings_persist_failure",
+        "unexpected_runtime_error"
+      ]
+    },
+    "user_message": {
+      "type": "string",
+      "minLength": 1
+    },
+    "developer_message": {
+      "type": "string",
+      "minLength": 1
+    },
+    "stack_trace": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "session_id": {
+      "type": "string",
+      "minLength": 8
+    },
+    "operation_id": {
+      "type": "string",
+      "minLength": 8
+    },
+    "trace_id": {
+      "type": "string",
+      "minLength": 8
+    },
+    "context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "module",
+        "action",
+        "recoverable",
+        "user_triggered"
+      ],
+      "properties": {
+        "module": {
+          "type": "string"
+        },
+        "action": {
+          "type": "string"
+        },
+        "recoverable": {
+          "type": "boolean"
+        },
+        "user_triggered": {
+          "type": "boolean"
+        },
+        "target_summary": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "app_version",
+        "os",
+        "arch"
+      ],
+      "properties": {
+        "app_version": {
+          "type": "string"
+        },
+        "os": {
+          "type": "string"
+        },
+        "os_version": {
+          "type": "string"
+        },
+        "arch": {
+          "type": "string"
+        }
+      }
+    },
+    "redaction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contains_sensitive_fields",
+        "rules_applied"
+      ],
+      "properties": {
+        "contains_sensitive_fields": {
+          "type": "boolean"
+        },
+        "rules_applied": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "log_refs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "event_id",
+          "timestamp"
+        ],
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    }
+  }
+}
