@@ -7,14 +7,14 @@ import {
   useReducer,
   startTransition,
   type Dispatch,
-  type PropsWithChildren
+  type PropsWithChildren,
 } from "react";
 
 import { loadMenuItems } from "../shared/menu-item-service";
 import {
   filterMenuItems,
   type MenuItemFilterState,
-  type NormalizedMenuItem
+  type NormalizedMenuItem,
 } from "../shared/menu-items";
 
 export type AppPhase =
@@ -48,6 +48,8 @@ export type AppState = {
   filters: MenuItemFilterState;
   menuItems: NormalizedMenuItem[];
   backups: BackupRecord[];
+  scannedScopeCount: number;
+  lastScanSummary: string;
 };
 
 type AppAction =
@@ -66,15 +68,15 @@ const seedBackups: BackupRecord[] = [
     label: "周二快速清理",
     createdAt: "2026-04-15 18:40",
     sizeLabel: "1.2 GB",
-    status: "ready"
+    status: "ready",
   },
   {
     id: "backup-0410",
     label: "应用缓存回滚点",
     createdAt: "2026-04-10 09:15",
     sizeLabel: "640 MB",
-    status: "ready"
-  }
+    status: "ready",
+  },
 ];
 
 const initialState: AppState = {
@@ -88,10 +90,12 @@ const initialState: AppState = {
     sourceKind: null,
     target: null,
     enabledOnly: false,
-    editableOnly: false
+    editableOnly: false,
   },
   menuItems: [],
-  backups: seedBackups
+  backups: seedBackups,
+  scannedScopeCount: 0,
+  lastScanSummary: "等待首次扫描",
 };
 
 function reducer(state: AppState, action: AppAction): AppState {
@@ -106,9 +110,11 @@ function reducer(state: AppState, action: AppAction): AppState {
       const nextSelectedItemIds = state.selectedItemIds.filter((itemId) =>
         action.items.some((item) => item.id === itemId)
       );
+      const scannedScopeCount = new Set(action.items.map((item) => item.target)).size;
 
       return {
         ...state,
+        phase: "scan-complete",
         menuItems: action.items,
         menuLoadState: "ready",
         menuLoadError: null,
@@ -117,18 +123,26 @@ function reducer(state: AppState, action: AppAction): AppState {
             ? nextSelectedItemIds
             : action.items[0]
               ? [action.items[0].id]
-              : []
+              : [],
+        scannedScopeCount,
+        lastScanSummary: `已识别 ${action.items.length} 个菜单项，覆盖 ${scannedScopeCount} 个对象场景。`,
       };
     }
     case "set-menu-load-error":
-      return { ...state, menuLoadState: "error", menuLoadError: action.message };
+      return {
+        ...state,
+        phase: "partial-failure",
+        menuLoadState: "error",
+        menuLoadError: action.message,
+        lastScanSummary: "菜单项加载失败，当前使用回退数据。",
+      };
     case "toggle-item-selection": {
       const exists = state.selectedItemIds.includes(action.itemId);
       return {
         ...state,
         selectedItemIds: exists
           ? state.selectedItemIds.filter((id) => id !== action.itemId)
-          : [...state.selectedItemIds, action.itemId]
+          : [...state.selectedItemIds, action.itemId],
       };
     }
     case "clear-selection":
@@ -138,8 +152,8 @@ function reducer(state: AppState, action: AppAction): AppState {
         ...state,
         filters: {
           ...state.filters,
-          ...action.filter
-        }
+          ...action.filter,
+        },
       };
     default:
       return state;
@@ -179,7 +193,7 @@ export function AppStateProvider({ children }: PropsWithChildren) {
 
         dispatch({
           type: "set-menu-load-error",
-          message: error instanceof Error ? error.message : "菜单项加载失败"
+          message: error instanceof Error ? error.message : "菜单项加载失败",
         });
       });
 
@@ -203,7 +217,7 @@ export function useAppState() {
 
 export function useFilteredMenuItems() {
   const {
-    state: { menuItems, filters }
+    state: { menuItems, filters },
   } = useAppState();
 
   return useMemo(() => filterMenuItems(menuItems, filters), [filters, menuItems]);

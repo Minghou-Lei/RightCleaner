@@ -19,9 +19,9 @@ export function AppShell({ children }: PropsWithChildren) {
     <div className="rc-app-shell">
       <aside className="rc-sidebar rc-surface">
         <div className="rc-sidebar__brand">
-          <span className="rc-sidebar__eyebrow">MIN-44 Foundation</span>
+          <span className="rc-sidebar__eyebrow">MIN-49 Detection</span>
           <h1 className="rc-title">RightCleaner</h1>
-          <p className="rc-body">为扫描、评估、清理与恢复提供统一状态和页面骨架。</p>
+          <p className="rc-body">为右键菜单扫描、异常标记、清理确认与恢复提供统一状态骨架。</p>
         </div>
 
         <nav className="rc-nav">

@@ -1,12 +1,16 @@
 import { Link, useParams } from "react-router-dom";
 
+import {
+  analyzeNormalizedMenuItem,
+  getDetectionTagLabel,
+} from "@/features/cleanup/menu-item-detection";
 import { formatMenuSourceKind, formatMenuVisibility } from "../shared/menu-items";
 import { useAppState } from "../state/app-state";
 
 export function CleanupDetailPage() {
   const { itemId } = useParams();
   const {
-    state: { menuItems }
+    state: { menuItems },
   } = useAppState();
 
   const item =
@@ -29,10 +33,16 @@ export function CleanupDetailPage() {
         commandPath: null,
         commandStorePaths: [],
         sourceValues: [],
-        notes: ["当前路由尚未绑定到具体数据项。"]
+        notes: ["当前路由尚未绑定到具体数据项。"],
       },
-      tags: []
+      tags: [],
     };
+
+  const duplicateGroup =
+    menuItems.filter((entry) => entry.canonicalTitle === item.canonicalTitle).length > 1
+      ? item.canonicalTitle
+      : null;
+  const detection = analyzeNormalizedMenuItem(item, duplicateGroup);
 
   return (
     <section className="rc-screen">
@@ -56,6 +66,21 @@ export function CleanupDetailPage() {
       </header>
 
       <div className="rc-grid rc-grid--two">
+        <section className="rc-card">
+          <h3>识别结果</h3>
+          <p className="rc-body">{detection.detail}</p>
+          {detection.tags.length > 0 ? (
+            <div className="rc-tag-row">
+              {detection.tags.map((tag) => (
+                <span className="rc-pill rc-pill--info" key={tag}>
+                  {getDetectionTagLabel(tag)}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <span className={`rc-pill rc-pill--${detection.badgeTone}`}>{detection.headline}</span>
+          )}
+        </section>
         <section className="rc-card">
           <h3>可编辑字段</h3>
           <div className="rc-stack">

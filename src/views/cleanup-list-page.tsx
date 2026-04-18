@@ -1,33 +1,58 @@
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 
+import {
+  analyzeNormalizedMenuItem,
+  getDetectionTagLabel,
+} from "@/features/cleanup/menu-item-detection";
 import {
   formatMenuSourceKind,
   formatMenuVisibility,
   type MenuSourceKind,
-  type MenuTargetKind
+  type MenuTargetKind,
 } from "../shared/menu-items";
 import { useAppState, useFilteredMenuItems } from "../state/app-state";
 
 export function CleanupListPage() {
   const {
     state: { filters, menuLoadError, selectedItemIds },
-    dispatch
+    dispatch,
   } = useAppState();
   const menuItems = useFilteredMenuItems();
+
+  const duplicateGroups = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const item of menuItems) {
+      counts.set(item.canonicalTitle, (counts.get(item.canonicalTitle) ?? 0) + 1);
+    }
+    return counts;
+  }, [menuItems]);
+
+  const detectedItems = useMemo(
+    () =>
+      menuItems.map((item) => ({
+        item,
+        detection: analyzeNormalizedMenuItem(
+          item,
+          (duplicateGroups.get(item.canonicalTitle) ?? 0) > 1 ? item.canonicalTitle : null
+        ),
+      })),
+    [duplicateGroups, menuItems]
+  );
 
   return (
     <section className="rc-screen">
       <header className="rc-section-heading">
         <div>
-          <span className="rc-kicker">菜单项列表</span>
-          <h2 className="rc-title">统一查看不同来源的 Shell 菜单项</h2>
+          <span className="rc-kicker">清理项列表</span>
+          <h2 className="rc-title">菜单项识别结果与批量处置入口</h2>
         </div>
       </header>
 
       <section className="rc-card rc-toolbar">
         <input
           className="rc-input"
-          placeholder="搜索菜单项标题、路径、命令或 CLSID"
+          placeholder="搜索菜单项标题、路径、命令、CLSID 或异常标签"
           value={filters.keyword}
           onChange={(event) => dispatch({ type: "set-filter", filter: { keyword: event.target.value } })}
         />
@@ -37,7 +62,7 @@ export function CleanupListPage() {
           onChange={(event) =>
             dispatch({
               type: "set-filter",
-              filter: { sourceKind: (event.target.value || null) as MenuSourceKind | null }
+              filter: { sourceKind: (event.target.value || null) as MenuSourceKind | null },
             })
           }
         >
@@ -52,7 +77,7 @@ export function CleanupListPage() {
           onChange={(event) =>
             dispatch({
               type: "set-filter",
-              filter: { target: (event.target.value || null) as MenuTargetKind | null }
+              filter: { target: (event.target.value || null) as MenuTargetKind | null },
             })
           }
         >
@@ -84,7 +109,7 @@ export function CleanupListPage() {
       {menuLoadError ? <p className="rc-body">{menuLoadError}</p> : null}
 
       <div className="rc-stack">
-        {menuItems.map((item) => {
+        {detectedItems.map(({ item, detection }) => {
           const selected = selectedItemIds.includes(item.id);
           return (
             <article className="rc-card rc-row" key={item.id}>
@@ -99,12 +124,22 @@ export function CleanupListPage() {
               <div className="rc-row__content">
                 <div className="rc-row__title">
                   <strong>{item.title}</strong>
-                  <span className="rc-pill rc-pill--info">{item.enabled ? "enabled" : "disabled"}</span>
+                  <span className={`rc-pill rc-pill--${detection.badgeTone}`}>{detection.headline}</span>
                 </div>
                 <p className="rc-body">
                   {formatMenuSourceKind(item.sourceKind)} · {item.targetLabel} ·{" "}
                   {formatMenuVisibility(item.visibility)}
                 </p>
+                <p className="rc-body">{detection.detail}</p>
+                {detection.tags.length > 0 ? (
+                  <div className="rc-tag-row">
+                    {detection.tags.map((tag) => (
+                      <span className="rc-pill rc-pill--info" key={tag}>
+                        {getDetectionTagLabel(tag)}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
               </div>
               <div className="rc-row__meta">
                 <span>{item.command?.command ?? item.handlerClsid ?? item.trace.registrationPath}</span>

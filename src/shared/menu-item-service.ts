@@ -106,6 +106,28 @@ const fallbackMenuItems: NormalizedMenuItem[] = [
       notes: ["当前为前端回退数据，用于非 Tauri 环境预览。"]
     },
     tags: ["fallback", "command-store", "directory-background"]
+  },
+  {
+    id: "orphan-shell-entry",
+    title: "Cloud Drive Sync",
+    canonicalTitle: "cloud drive sync",
+    sourceKind: "shell_verb",
+    sourceLabel: "目录",
+    target: "directory",
+    targetLabel: "目录",
+    enabled: true,
+    editable: true,
+    visibility: "primary",
+    command: null,
+    handlerClsid: null,
+    trace: {
+      registrationPath: "HKEY_CLASSES_ROOT\\Directory\\shell\\CloudDriveSync",
+      commandPath: null,
+      commandStorePaths: [],
+      sourceValues: [],
+      notes: ["当前为前端回退数据，用于验证来源不明与失效项识别。"]
+    },
+    tags: ["fallback", "unknown-source", "directory"]
   }
 ];
 
