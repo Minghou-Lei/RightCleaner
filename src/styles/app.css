@@ -99,6 +99,12 @@
   gap: var(--space-3);
 }
 
+.rc-tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
 .rc-list-card {
   padding: var(--space-4);
   background: var(--color-surface-strong);
@@ -122,6 +128,12 @@
 .rc-row__meta {
   flex-direction: column;
   align-items: flex-end;
+}
+
+.rc-tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
 }
 
 .rc-pill {
@@ -172,7 +184,8 @@
   .rc-hero__actions,
   .rc-toolbar,
   .rc-row,
-  .rc-list-card {
+  .rc-list-card,
+  .rc-tag-row {
     grid-template-columns: 1fr;
     flex-direction: column;
     align-items: stretch;
