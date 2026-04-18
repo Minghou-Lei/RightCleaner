@@ -45,4 +45,5 @@ This repository currently treats `MIN-39` as the source of truth for:
 Product definition and interaction design documents live under `docs/`:
 
 - `docs/MIN-39-mvp-boundary.md`: MVP scope, non-goals, and release priorities
+- `docs/MIN-42-technical-architecture.md`: desktop framework, UI stack, system operation path, and permission model
 - `docs/product/MIN-40-information-architecture.md`: information architecture and core user flows
