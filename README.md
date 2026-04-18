@@ -85,6 +85,12 @@ Typical Windows build outputs:
 - `src-tauri/target/release/bundle/nsis/RightCleaner_0.1.0_x64-setup.exe`
 - `src-tauri/target/release/bundle/msi/RightCleaner_0.1.0_x64_en-US.msi`
 
+### Releases
+
+GitHub Releases:
+
+- [RightCleaner Releases](https://github.com/Minghou-Lei/RightCleaner/releases)
+
 ## Repository Guide
 
 - `src/`
