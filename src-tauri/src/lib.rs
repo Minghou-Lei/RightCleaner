@@ -8,6 +8,8 @@ pub fn run() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             commands::menu_items::list_menu_items,
+            commands::menu_items::inspect_menu_item_permissions,
+            commands::menu_items::disable_menu_item,
             commands::menu_items::set_menu_item_enabled,
             commands::menu_items::list_recovery_points,
             commands::menu_items::restore_recovery_point,

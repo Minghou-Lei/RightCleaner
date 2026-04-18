@@ -34,6 +34,32 @@ export type MenuTraceInfo = {
   notes: string[];
 };
 
+export type MenuItemPermissionSummary = {
+  registrationPath: string;
+  requiresElevation: boolean;
+  isProcessElevated: boolean;
+  canWriteWithoutElevation: boolean;
+  recommendedAction: string;
+  warning: string | null;
+};
+
+export type MenuItemMutationStatus =
+  | "applied"
+  | "applied_with_elevation"
+  | "elevation_cancelled"
+  | "rolled_back"
+  | "failed";
+
+export type MenuItemMutationResult = {
+  registrationPath: string;
+  status: MenuItemMutationStatus;
+  requiresElevation: boolean;
+  wasElevated: boolean;
+  rollbackPerformed: boolean;
+  backupFilePath: string | null;
+  message: string;
+};
+
 export type NormalizedMenuItem = {
   id: string;
   title: string;
