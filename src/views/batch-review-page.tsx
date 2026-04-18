@@ -1,18 +1,19 @@
+import { formatMenuSourceKind } from "../shared/menu-items";
 import { useAppState } from "../state/app-state";
 
 export function BatchReviewPage() {
   const {
-    state: { cleanupItems, selectedItemIds }
+    state: { menuItems, selectedItemIds }
   } = useAppState();
 
-  const selectedItems = cleanupItems.filter((item) => selectedItemIds.includes(item.id));
+  const selectedItems = menuItems.filter((item) => selectedItemIds.includes(item.id));
 
   return (
     <section className="rc-screen">
       <header className="rc-section-heading">
         <div>
           <span className="rc-kicker">批量操作确认</span>
-          <h2 className="rc-title">汇总已选清理项与执行配置</h2>
+          <h2 className="rc-title">汇总已选菜单项与后续编辑动作</h2>
         </div>
       </header>
 
@@ -22,15 +23,22 @@ export function BatchReviewPage() {
           <div className="rc-stack">
             {selectedItems.map((item) => (
               <article className="rc-list-card" key={item.id}>
-                <strong>{item.title}</strong>
-                <span className={`rc-pill rc-pill--${item.riskLevel}`}>{item.spaceLabel}</span>
+                <div>
+                  <strong>{item.title}</strong>
+                  <p className="rc-body">
+                    {formatMenuSourceKind(item.sourceKind)} · {item.targetLabel}
+                  </p>
+                </div>
+                <span className="rc-pill rc-pill--info">{item.enabled ? "enabled" : "disabled"}</span>
               </article>
             ))}
           </div>
         </section>
         <section className="rc-card">
           <h3>执行配置</h3>
-          <p className="rc-body">这里预留自动备份、失败继续策略和结果页跳转等批量行为配置。</p>
+          <p className="rc-body">
+            后续会在这里承接批量禁用、恢复和导出追踪信息，保证所有操作都基于统一菜单项模型。
+          </p>
         </section>
       </div>
     </section>

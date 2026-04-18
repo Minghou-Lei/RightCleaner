@@ -1,33 +1,49 @@
 import { Link, useParams } from "react-router-dom";
 
+import { formatMenuSourceKind, formatMenuVisibility } from "../shared/menu-items";
 import { useAppState } from "../state/app-state";
 
 export function CleanupDetailPage() {
   const { itemId } = useParams();
   const {
-    state: { cleanupItems }
+    state: { menuItems }
   } = useAppState();
 
   const item =
-    cleanupItems.find((entry) => entry.id === itemId) ??
-    cleanupItems[0] ?? {
+    menuItems.find((entry) => entry.id === itemId) ??
+    menuItems[0] ?? {
       id: "fallback",
-      title: "未找到清理项",
-      category: "未知分类",
-      spaceLabel: "0 MB",
-      hitCount: 0,
-      riskLevel: "low" as const,
-      recoverable: false,
-      summary: "当前路由尚未绑定到具体数据项。"
+      title: "未找到菜单项",
+      canonicalTitle: "missing menu item",
+      sourceKind: "shell_verb" as const,
+      sourceLabel: "未知来源",
+      target: "file" as const,
+      targetLabel: "未知对象",
+      enabled: false,
+      editable: false,
+      visibility: "primary" as const,
+      command: null,
+      handlerClsid: null,
+      trace: {
+        registrationPath: "N/A",
+        commandPath: null,
+        commandStorePaths: [],
+        sourceValues: [],
+        notes: ["当前路由尚未绑定到具体数据项。"]
+      },
+      tags: []
     };
 
   return (
     <section className="rc-screen">
       <header className="rc-section-heading">
         <div>
-          <span className="rc-kicker">清理项详情</span>
+          <span className="rc-kicker">菜单项详情</span>
           <h2 className="rc-title">{item.title}</h2>
-          <p className="rc-body">{item.summary}</p>
+          <p className="rc-body">
+            {formatMenuSourceKind(item.sourceKind)} · {item.targetLabel} ·{" "}
+            {formatMenuVisibility(item.visibility)}
+          </p>
         </div>
         <div className="rc-hero__actions">
           <Link className="rc-button rc-button-secondary" to="/cleanup">
@@ -41,12 +57,30 @@ export function CleanupDetailPage() {
 
       <div className="rc-grid rc-grid--two">
         <section className="rc-card">
-          <h3>影响说明</h3>
-          <p className="rc-body">这里为后续 UI 预留风险说明、依赖影响和命中样例模块。</p>
+          <h3>可编辑字段</h3>
+          <div className="rc-stack">
+            <p className="rc-body">启用状态: {item.enabled ? "enabled" : "disabled"}</p>
+            <p className="rc-body">可编辑: {item.editable ? "yes" : "no"}</p>
+            <p className="rc-body">命令: {item.command?.command ?? "无直接命令"}</p>
+            <p className="rc-body">CLSID: {item.handlerClsid ?? "无"}</p>
+          </div>
         </section>
         <section className="rc-card">
-          <h3>备份策略</h3>
-          <p className="rc-body">详情页将复用全局状态中的恢复能力和任务阶段，保证单项清理与批量清理一致。</p>
+          <h3>追踪信息</h3>
+          <div className="rc-stack">
+            <p className="rc-body">注册路径: {item.trace.registrationPath}</p>
+            <p className="rc-body">命令路径: {item.trace.commandPath ?? "无"}</p>
+            {item.trace.commandStorePaths.map((path) => (
+              <p className="rc-body" key={path}>
+                Command Store: {path}
+              </p>
+            ))}
+            {item.trace.notes.map((note) => (
+              <p className="rc-body" key={note}>
+                {note}
+              </p>
+            ))}
+          </div>
         </section>
       </div>
     </section>

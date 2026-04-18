@@ -1,11 +1,21 @@
+/* eslint-disable react-refresh/only-export-components */
 import {
   createContext,
   useContext,
+  useEffect,
   useMemo,
   useReducer,
+  startTransition,
   type Dispatch,
   type PropsWithChildren
 } from "react";
+
+import { loadMenuItems } from "../shared/menu-item-service";
+import {
+  filterMenuItems,
+  type MenuItemFilterState,
+  type NormalizedMenuItem
+} from "../shared/menu-items";
 
 export type AppPhase =
   | "idle"
@@ -17,19 +27,7 @@ export type AppPhase =
   | "restore-complete"
   | "partial-failure";
 
-export type RiskLevel = "low" | "medium" | "high";
 export type ThemeMode = "light" | "system";
-
-export type CleanupItem = {
-  id: string;
-  title: string;
-  category: string;
-  spaceLabel: string;
-  hitCount: number;
-  riskLevel: RiskLevel;
-  recoverable: boolean;
-  summary: string;
-};
 
 export type BackupRecord = {
   id: string;
@@ -39,61 +37,28 @@ export type BackupRecord = {
   status: "ready" | "expired" | "restored";
 };
 
-export type FilterState = {
-  keyword: string;
-  category: string | null;
-  risk: RiskLevel | null;
-  recoverableOnly: boolean;
-};
+export type MenuLoadState = "idle" | "loading" | "ready" | "error";
 
 export type AppState = {
   phase: AppPhase;
   themeMode: ThemeMode;
+  menuLoadState: MenuLoadState;
+  menuLoadError: string | null;
   selectedItemIds: string[];
-  filters: FilterState;
-  cleanupItems: CleanupItem[];
+  filters: MenuItemFilterState;
+  menuItems: NormalizedMenuItem[];
   backups: BackupRecord[];
 };
 
 type AppAction =
   | { type: "set-phase"; phase: AppPhase }
   | { type: "set-theme-mode"; themeMode: ThemeMode }
+  | { type: "set-menu-load-state"; menuLoadState: MenuLoadState }
+  | { type: "hydrate-menu-items"; items: NormalizedMenuItem[] }
+  | { type: "set-menu-load-error"; message: string }
   | { type: "toggle-item-selection"; itemId: string }
   | { type: "clear-selection" }
-  | { type: "set-filter"; filter: Partial<FilterState> };
-
-const seedItems: CleanupItem[] = [
-  {
-    id: "system-cache",
-    title: "系统缓存与临时日志",
-    category: "系统垃圾",
-    spaceLabel: "3.2 GB",
-    hitCount: 148,
-    riskLevel: "low",
-    recoverable: true,
-    summary: "适合默认推荐的一组低风险临时文件。"
-  },
-  {
-    id: "app-residue",
-    title: "已卸载应用残留",
-    category: "应用残留",
-    spaceLabel: "1.4 GB",
-    hitCount: 36,
-    riskLevel: "medium",
-    recoverable: true,
-    summary: "安装目录和配置残留，需要在清理前确认依赖影响。"
-  },
-  {
-    id: "large-downloads",
-    title: "长期未访问下载文件",
-    category: "下载目录",
-    spaceLabel: "8.6 GB",
-    hitCount: 17,
-    riskLevel: "high",
-    recoverable: false,
-    summary: "用户文件占比高，必须二次确认，不进入默认推荐。"
-  }
-];
+  | { type: "set-filter"; filter: Partial<MenuItemFilterState> };
 
 const seedBackups: BackupRecord[] = [
   {
@@ -115,14 +80,17 @@ const seedBackups: BackupRecord[] = [
 const initialState: AppState = {
   phase: "idle",
   themeMode: "light",
-  selectedItemIds: ["system-cache"],
+  menuLoadState: "idle",
+  menuLoadError: null,
+  selectedItemIds: [],
   filters: {
     keyword: "",
-    category: null,
-    risk: null,
-    recoverableOnly: false
+    sourceKind: null,
+    target: null,
+    enabledOnly: false,
+    editableOnly: false
   },
-  cleanupItems: seedItems,
+  menuItems: [],
   backups: seedBackups
 };
 
@@ -132,6 +100,28 @@ function reducer(state: AppState, action: AppAction): AppState {
       return { ...state, phase: action.phase };
     case "set-theme-mode":
       return { ...state, themeMode: action.themeMode };
+    case "set-menu-load-state":
+      return { ...state, menuLoadState: action.menuLoadState };
+    case "hydrate-menu-items": {
+      const nextSelectedItemIds = state.selectedItemIds.filter((itemId) =>
+        action.items.some((item) => item.id === itemId)
+      );
+
+      return {
+        ...state,
+        menuItems: action.items,
+        menuLoadState: "ready",
+        menuLoadError: null,
+        selectedItemIds:
+          nextSelectedItemIds.length > 0
+            ? nextSelectedItemIds
+            : action.items[0]
+              ? [action.items[0].id]
+              : []
+      };
+    }
+    case "set-menu-load-error":
+      return { ...state, menuLoadState: "error", menuLoadError: action.message };
     case "toggle-item-selection": {
       const exists = state.selectedItemIds.includes(action.itemId);
       return {
@@ -167,6 +157,37 @@ export function AppStateProvider({ children }: PropsWithChildren) {
   const [state, dispatch] = useReducer(reducer, initialState);
   const value = useMemo(() => ({ state, dispatch }), [state]);
 
+  useEffect(() => {
+    let active = true;
+
+    dispatch({ type: "set-menu-load-state", menuLoadState: "loading" });
+
+    loadMenuItems()
+      .then((items) => {
+        if (!active) {
+          return;
+        }
+
+        startTransition(() => {
+          dispatch({ type: "hydrate-menu-items", items });
+        });
+      })
+      .catch((error: unknown) => {
+        if (!active) {
+          return;
+        }
+
+        dispatch({
+          type: "set-menu-load-error",
+          message: error instanceof Error ? error.message : "菜单项加载失败"
+        });
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   return <AppStateContext.Provider value={value}>{children}</AppStateContext.Provider>;
 }
 
@@ -178,4 +199,12 @@ export function useAppState() {
   }
 
   return context;
+}
+
+export function useFilteredMenuItems() {
+  const {
+    state: { menuItems, filters }
+  } = useAppState();
+
+  return useMemo(() => filterMenuItems(menuItems, filters), [filters, menuItems]);
 }

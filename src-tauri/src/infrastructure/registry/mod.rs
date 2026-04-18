@@ -433,3 +433,5 @@ mod tests {
         }
     }
 }
+
+pub mod menu_item_scanner;
