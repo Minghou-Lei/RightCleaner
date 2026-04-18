@@ -7,11 +7,15 @@ import {
   type DetectionTag,
 } from '@/features/cleanup/menu-item-detection';
 import {
-  formatMenuSourceKind,
-  formatMenuVisibility,
-  type MenuSourceKind,
-  type MenuTargetKind,
-} from '../shared/menu-items';
+  formatMenuItemSourceCategory,
+  formatMenuItemStatus,
+  formatRiskLevel,
+  getMenuItemQueryMeta,
+  type MenuItemSourceCategory,
+  type MenuItemStatus,
+  type RiskLevel,
+} from '@/shared/menu-item-query';
+import { formatMenuVisibility, type MenuTargetKind } from '../shared/menu-items';
 import { useAppState, useFilteredMenuItems } from '../state/app-state';
 
 function parseIssueFilter(value: string | null): DetectionTag | null {
@@ -35,7 +39,7 @@ export function CleanupListPage() {
     toggleMenuItemEnabled,
   } = useAppState();
   const [searchParams] = useSearchParams();
-  const menuItems = useFilteredMenuItems();
+  const filteredMenuItems = useFilteredMenuItems();
   const issueFilter = parseIssueFilter(searchParams.get('issue'));
 
   useEffect(() => {
@@ -43,32 +47,39 @@ export function CleanupListPage() {
       type: 'set-filter',
       filter: {
         keyword: searchParams.get('keyword') ?? '',
-        sourceKind: (searchParams.get('source') || null) as MenuSourceKind | null,
         target: (searchParams.get('target') || null) as MenuTargetKind | null,
-        enabledOnly: searchParams.get('enabledOnly') === 'true',
+        source: (searchParams.get('source') || null) as MenuItemSourceCategory | null,
+        status: (searchParams.get('status') || null) as MenuItemStatus | null,
+        riskLevel: (searchParams.get('riskLevel') || null) as RiskLevel | null,
         editableOnly: searchParams.get('editableOnly') === 'true',
+        sortBy: (searchParams.get('sortBy') as typeof filters.sortBy | null) ?? filters.sortBy,
+        sortDirection:
+          (searchParams.get('sortDirection') as typeof filters.sortDirection | null) ??
+          filters.sortDirection,
       },
     });
-  }, [dispatch, searchParams]);
+  }, [dispatch, filters.sortBy, filters.sortDirection, searchParams]);
 
   const duplicateGroups = useMemo(() => {
     const counts = new Map<string, number>();
-    for (const item of menuItems) {
+    for (const item of filteredMenuItems) {
       counts.set(item.canonicalTitle, (counts.get(item.canonicalTitle) ?? 0) + 1);
     }
     return counts;
-  }, [menuItems]);
+  }, [filteredMenuItems]);
 
   const detectedItems = useMemo(
     () =>
-      menuItems.map((item) => ({
-        item,
-        detection: analyzeNormalizedMenuItem(
+      filteredMenuItems.map((item) => {
+        const duplicateGroup =
+          (duplicateGroups.get(item.canonicalTitle) ?? 0) > 1 ? item.canonicalTitle : null;
+        return {
           item,
-          (duplicateGroups.get(item.canonicalTitle) ?? 0) > 1 ? item.canonicalTitle : null,
-        ),
-      })),
-    [duplicateGroups, menuItems],
+          meta: getMenuItemQueryMeta(item, duplicateGroup),
+          detection: analyzeNormalizedMenuItem(item, duplicateGroup),
+        };
+      }),
+    [duplicateGroups, filteredMenuItems],
   );
 
   const visibleItems = useMemo(
@@ -93,27 +104,12 @@ export function CleanupListPage() {
       <section className="rc-card rc-toolbar">
         <input
           className="rc-input"
-          placeholder="搜索菜单项标题、路径、命令、CLSID 或异常标签"
+          placeholder="搜索标题、对象类型、来源、状态、风险、路径或异常标签"
           value={filters.keyword}
           onChange={(event) =>
             dispatch({ type: 'set-filter', filter: { keyword: event.target.value } })
           }
         />
-        <select
-          className="rc-input"
-          value={filters.sourceKind ?? ''}
-          onChange={(event) =>
-            dispatch({
-              type: 'set-filter',
-              filter: { sourceKind: (event.target.value || null) as MenuSourceKind | null },
-            })
-          }
-        >
-          <option value="">全部来源</option>
-          <option value="shell_verb">Shell 命令</option>
-          <option value="shell_extension">Shell 扩展</option>
-          <option value="command_store">Command Store</option>
-        </select>
         <select
           className="rc-input"
           value={filters.target ?? ''}
@@ -133,14 +129,81 @@ export function CleanupListPage() {
           <option value="folder">Folder</option>
           <option value="all_file_system_objects">文件系统对象</option>
         </select>
+        <select
+          className="rc-input"
+          value={filters.source ?? ''}
+          onChange={(event) =>
+            dispatch({
+              type: 'set-filter',
+              filter: { source: (event.target.value || null) as MenuItemSourceCategory | null },
+            })
+          }
+        >
+          <option value="">全部来源</option>
+          <option value="windows">Windows</option>
+          <option value="third_party">第三方</option>
+          <option value="unknown">未知来源</option>
+        </select>
+        <select
+          className="rc-input"
+          value={filters.status ?? ''}
+          onChange={(event) =>
+            dispatch({
+              type: 'set-filter',
+              filter: { status: (event.target.value || null) as MenuItemStatus | null },
+            })
+          }
+        >
+          <option value="">全部状态</option>
+          <option value="enabled">启用中</option>
+          <option value="disabled">已禁用</option>
+          <option value="hidden">隐藏项</option>
+        </select>
+        <select
+          className="rc-input"
+          value={filters.riskLevel ?? ''}
+          onChange={(event) =>
+            dispatch({
+              type: 'set-filter',
+              filter: { riskLevel: (event.target.value || null) as RiskLevel | null },
+            })
+          }
+        >
+          <option value="">全部风险</option>
+          <option value="high">高风险</option>
+          <option value="medium">中风险</option>
+          <option value="low">低风险</option>
+        </select>
+        <select
+          aria-label="排序字段"
+          className="rc-input"
+          value={filters.sortBy}
+          onChange={(event) =>
+            dispatch({
+              type: 'set-filter',
+              filter: { sortBy: event.target.value as typeof filters.sortBy },
+            })
+          }
+        >
+          <option value="riskLevel">按风险</option>
+          <option value="status">按状态</option>
+          <option value="source">按来源</option>
+          <option value="target">按对象类型</option>
+          <option value="title">按名称</option>
+        </select>
         <button
           className="rc-button rc-button-secondary"
           onClick={() =>
-            dispatch({ type: 'set-filter', filter: { enabledOnly: !filters.enabledOnly } })
+            dispatch({
+              type: 'set-filter',
+              filter: {
+                sortDirection: filters.sortDirection === 'desc' ? 'asc' : 'desc',
+              },
+            })
           }
           type="button"
         >
-          {filters.enabledOnly ? '显示全部' : '仅启用项'}
+          {filters.sortDirection === 'desc' ? '降序' : '升序'}
         </button>
         <button
           className="rc-button rc-button-secondary"
@@ -170,7 +233,7 @@ export function CleanupListPage() {
       ) : null}
 
       <div className="rc-stack">
-        {visibleItems.map(({ item, detection }) => {
+        {visibleItems.map(({ item, meta, detection }) => {
           const selected = selectedItemIds.includes(item.id);
           return (
             <article className="rc-card rc-row" key={item.id}>
@@ -190,9 +253,10 @@ export function CleanupListPage() {
                   </span>
                 </div>
                 <p className="rc-body">
-                  {formatMenuSourceKind(item.sourceKind)} · {item.targetLabel} ·{' '}
-                  {formatMenuVisibility(item.visibility)}
+                  {item.targetLabel} · {formatMenuItemSourceCategory(meta.source)} ·{' '}
+                  {formatMenuItemStatus(meta.status)} · {formatRiskLevel(meta.riskLevel)}
                 </p>
+                <p className="rc-body">{formatMenuVisibility(item.visibility)}</p>
                 <p className="rc-body">{detection.detail}</p>
                 {detection.tags.length > 0 ? (
                   <div className="rc-tag-row">
@@ -205,9 +269,7 @@ export function CleanupListPage() {
                 ) : null}
               </div>
               <div className="rc-row__meta">
-                <span>
-                  {item.command?.command ?? item.handlerClsid ?? item.trace.registrationPath}
-                </span>
+                <span>{item.command?.command ?? item.handlerClsid ?? item.trace.registrationPath}</span>
                 <button
                   className="rc-button rc-button-primary"
                   disabled={activeItemId === item.id || !item.editable}

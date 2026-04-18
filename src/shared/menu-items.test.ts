@@ -59,25 +59,47 @@ describe("filterMenuItems", () => {
   it("matches keyword against registry trace and command", () => {
     const result = filterMenuItems(sampleItems, {
       keyword: "openwithcode",
-      sourceKind: null,
       target: null,
-      enabledOnly: false,
-      editableOnly: false
+      source: null,
+      status: null,
+      riskLevel: null,
+      editableOnly: false,
+      sortBy: "title",
+      sortDirection: "asc"
     });
 
     expect(result).toHaveLength(1);
     expect(result[0]?.id).toBe("shell-verb-open-code");
   });
 
-  it("applies enabled and source filters together", () => {
+  it("filters by source and risk level", () => {
     const result = filterMenuItems(sampleItems, {
       keyword: "",
-      sourceKind: "shell_extension",
       target: null,
-      enabledOnly: true,
-      editableOnly: false
+      source: "third_party",
+      status: null,
+      riskLevel: "medium",
+      editableOnly: false,
+      sortBy: "title",
+      sortDirection: "asc"
     });
 
-    expect(result).toHaveLength(0);
+    expect(result).toHaveLength(1);
+    expect(result[0]?.id).toBe("handler-7zip");
+  });
+
+  it("sorts by risk in descending order", () => {
+    const result = filterMenuItems(sampleItems, {
+      keyword: "",
+      target: null,
+      source: null,
+      status: null,
+      riskLevel: null,
+      editableOnly: false,
+      sortBy: "riskLevel",
+      sortDirection: "desc"
+    });
+
+    expect(result.map((item) => item.id)).toEqual(["handler-7zip", "shell-verb-open-code"]);
   });
 });

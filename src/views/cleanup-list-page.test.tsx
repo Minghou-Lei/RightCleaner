@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
 import { invoke } from '@tauri-apps/api/core';
+import { MemoryRouter } from 'react-router-dom';
 
 import { AppStateProvider } from '@/state/app-state';
 import { CleanupListPage } from './cleanup-list-page';
@@ -119,7 +119,7 @@ describe('CleanupListPage', () => {
 
   it('applies homepage query filters for issue hotspots', async () => {
     render(
-      <MemoryRouter initialEntries={['/cleanup?source=shell_extension&issue=third-party']}>
+      <MemoryRouter initialEntries={['/cleanup?source=third_party&issue=third-party']}>
         <AppStateProvider>
           <CleanupListPage />
         </AppStateProvider>
@@ -131,5 +131,26 @@ describe('CleanupListPage', () => {
     ).toBeInTheDocument();
     expect(screen.getByText('7-Zip')).toBeInTheDocument();
     expect(screen.queryByText('Open with Code')).not.toBeInTheDocument();
+  });
+
+  it('filters by risk and source, then updates sort direction', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter>
+        <AppStateProvider>
+          <CleanupListPage />
+        </AppStateProvider>
+      </MemoryRouter>,
+    );
+
+    await user.selectOptions(await screen.findByDisplayValue('全部风险'), 'high');
+    await user.selectOptions(screen.getByDisplayValue('全部来源'), 'unknown');
+
+    expect(screen.getByText('Open with Code')).toBeInTheDocument();
+    expect(screen.queryByText('7-Zip')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '降序' }));
+    expect(screen.getByRole('button', { name: '升序' })).toBeInTheDocument();
   });
 });
