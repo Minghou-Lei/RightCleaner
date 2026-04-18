@@ -15,8 +15,10 @@ import { useAppState, useFilteredMenuItems } from "../state/app-state";
 
 export function CleanupListPage() {
   const {
-    state: { filters, menuLoadError, selectedItemIds },
+    state: { filters, menuLoadError, operationError, selectedItemIds },
     dispatch,
+    activeItemId,
+    toggleMenuItemEnabled,
   } = useAppState();
   const menuItems = useFilteredMenuItems();
 
@@ -107,6 +109,7 @@ export function CleanupListPage() {
       </section>
 
       {menuLoadError ? <p className="rc-body">{menuLoadError}</p> : null}
+      {operationError ? <p className="rc-body">{operationError}</p> : null}
 
       <div className="rc-stack">
         {detectedItems.map(({ item, detection }) => {
@@ -143,6 +146,14 @@ export function CleanupListPage() {
               </div>
               <div className="rc-row__meta">
                 <span>{item.command?.command ?? item.handlerClsid ?? item.trace.registrationPath}</span>
+                <button
+                  className="rc-button rc-button-primary"
+                  disabled={activeItemId === item.id || !item.editable}
+                  onClick={() => void toggleMenuItemEnabled(item.id, !item.enabled)}
+                  type="button"
+                >
+                  {activeItemId === item.id ? "处理中..." : item.enabled ? "禁用" : "启用"}
+                </button>
                 <Link className="rc-button rc-button-secondary" to={`/cleanup/${item.id}`}>
                   查看详情
                 </Link>

@@ -51,6 +51,24 @@ export type NormalizedMenuItem = {
   tags: string[];
 };
 
+export type MenuItemBackupAction = "enable" | "disable";
+
+export type MenuItemBackupStatus = "ready" | "restored";
+
+export type MenuItemBackupRecord = {
+  id: string;
+  itemId: string;
+  itemTitle: string;
+  registryPath: string;
+  label: string;
+  createdAt: string;
+  action: MenuItemBackupAction;
+  status: MenuItemBackupStatus;
+  previousEnabled: boolean;
+  resultingEnabled: boolean;
+  previousLegacyDisable: string | null;
+};
+
 export type MenuItemFilterState = {
   keyword: string;
   sourceKind: MenuSourceKind | null;

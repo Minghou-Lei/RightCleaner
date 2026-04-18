@@ -2,7 +2,9 @@ import { useAppState } from "../state/app-state";
 
 export function RecoveryCenterPage() {
   const {
-    state: { backups }
+    state: { backups, operationError },
+    activeBackupId,
+    restoreBackup,
   } = useAppState();
 
   return (
@@ -14,6 +16,8 @@ export function RecoveryCenterPage() {
         </div>
       </header>
 
+      {operationError ? <p className="rc-body">{operationError}</p> : null}
+
       <section className="rc-card">
         <div className="rc-stack">
           {backups.map((backup) => (
@@ -21,12 +25,23 @@ export function RecoveryCenterPage() {
               <div>
                 <strong>{backup.label}</strong>
                 <p className="rc-body">
-                  {backup.createdAt} · 状态 {backup.status}
+                  {backup.itemTitle} · {backup.registryPath}
+                </p>
+                <p className="rc-body">
+                  时间戳 {backup.createdAt} · 状态 {backup.status}
                 </p>
               </div>
-              <span className="rc-pill rc-pill--info">{backup.sizeLabel}</span>
+              <button
+                className="rc-button rc-button-secondary"
+                disabled={backup.status === "restored" || activeBackupId === backup.id}
+                onClick={() => void restoreBackup(backup.id)}
+                type="button"
+              >
+                {activeBackupId === backup.id ? "恢复中..." : backup.status === "restored" ? "已恢复" : "恢复"}
+              </button>
             </article>
           ))}
+          {backups.length === 0 ? <p className="rc-body">尚无可用恢复点。</p> : null}
         </div>
       </section>
     </section>

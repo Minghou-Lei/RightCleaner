@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 
-import type { NormalizedMenuItem } from "./menu-items";
+import type { MenuItemBackupRecord, NormalizedMenuItem } from "./menu-items";
 
 const fallbackMenuItems: NormalizedMenuItem[] = [
   {
@@ -47,7 +47,7 @@ const fallbackMenuItems: NormalizedMenuItem[] = [
     target: "directory",
     targetLabel: "目录",
     enabled: true,
-    editable: true,
+    editable: false,
     visibility: "primary",
     command: null,
     handlerClsid: "{23170F69-40C1-278A-1000-000100020000}",
@@ -131,10 +131,42 @@ const fallbackMenuItems: NormalizedMenuItem[] = [
   }
 ];
 
+const fallbackRecoveryPoints: MenuItemBackupRecord[] = [
+  {
+    id: "toggle-1713490000",
+    itemId: "shell-verb-open-code",
+    itemTitle: "Open with Code",
+    registryPath: "HKEY_CLASSES_ROOT\\*\\shell\\OpenWithCode",
+    label: "禁用 Open with Code",
+    createdAt: "1713490000",
+    action: "disable",
+    status: "ready",
+    previousEnabled: true,
+    resultingEnabled: false,
+    previousLegacyDisable: null
+  }
+];
+
 export async function loadMenuItems() {
   try {
     return await invoke<NormalizedMenuItem[]>("list_menu_items");
   } catch {
     return fallbackMenuItems;
   }
+}
+
+export async function setMenuItemEnabled(itemId: string, enabled: boolean) {
+  await invoke("set_menu_item_enabled", { itemId, enabled });
+}
+
+export async function loadRecoveryPoints() {
+  try {
+    return await invoke<MenuItemBackupRecord[]>("list_recovery_points");
+  } catch {
+    return fallbackRecoveryPoints;
+  }
+}
+
+export async function restoreRecoveryPoint(backupId: string) {
+  await invoke("restore_recovery_point", { backupId });
 }
