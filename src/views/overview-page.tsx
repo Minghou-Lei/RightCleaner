@@ -7,6 +7,14 @@ import {
   type DetectionTag,
 } from '@/features/cleanup/menu-item-detection';
 import {
+  BatchIcon,
+  CleanupIcon,
+  OverviewIcon,
+  RecoveryIcon,
+  ShieldIcon,
+  SourceIcon,
+} from '../shared/ui/icons';
+import {
   formatMenuSourceKind,
   formatMenuVisibility,
   type MenuSourceKind,
@@ -49,7 +57,7 @@ const issueDefinitions: Array<{
     tag: 'third-party',
     fallbackTitle: '第三方扩展',
     description: '快速检查外部软件植入的上下文菜单扩展。',
-    to: '/cleanup?source=shell_extension&issue=third-party',
+    to: '/cleanup?source=third_party&issue=third-party',
   },
   {
     tag: 'duplicate',
@@ -121,18 +129,25 @@ export function OverviewPage() {
   );
 
   const metricCards = [
-    { label: '菜单项总数', value: menuItems.length, tone: 'info' },
+    { label: '菜单项总数', value: menuItems.length, tone: 'info', icon: <OverviewIcon /> },
     {
       label: '风险命中',
       value: flaggedItems.length,
       tone: flaggedItems.length > 0 ? 'high' : 'low',
+      icon: <ShieldIcon />,
     },
     {
       label: '可直接处理',
       value: menuItems.filter((item) => item.editable).length,
       tone: 'medium',
+      icon: <CleanupIcon />,
     },
-    { label: '恢复点', value: backups.length, tone: backups.length > 0 ? 'info' : 'low' },
+    {
+      label: '恢复点',
+      value: backups.length,
+      tone: backups.length > 0 ? 'info' : 'low',
+      icon: <RecoveryIcon />,
+    },
   ] as const;
 
   return (
@@ -140,27 +155,40 @@ export function OverviewPage() {
       <header className="rc-hero rc-surface">
         <div className="rc-hero__copy">
           <span className="rc-kicker">首页 / 总览</span>
-          <h2 className="rc-title">首页概览与分类导航</h2>
+          <h2 className="rc-title rc-title--hero">首页概览与分类导航</h2>
           <p className="rc-body">
             从一页内掌握风险概览、对象分类和主要操作入口，优先定位问题最集中的右键菜单区域。
           </p>
           <p className="rc-body">{lastScanSummary}</p>
+          <div className="rc-hero__metrics">
+            {metricCards.map((card) => (
+              <article className="rc-metric-card" key={card.label}>
+                <span className={`rc-icon-chip rc-icon-chip--${card.tone === 'info' ? 'accent' : card.tone}`}>
+                  {card.icon}
+                </span>
+                <div className="rc-stack rc-stack--tight">
+                  <strong className="rc-metric-card__value">{String(card.value).padStart(2, '0')}</strong>
+                  <span className="rc-metric-card__label">{card.label}</span>
+                </div>
+              </article>
+            ))}
+          </div>
         </div>
         <div className="rc-hero__actions">
-          <button
-            className="rc-button rc-button-primary"
-            onClick={() => void reloadAppData()}
-            type="button"
-          >
+          <button className="rc-button rc-button-primary" onClick={() => void reloadAppData()} type="button">
+            <OverviewIcon />
             重新扫描
           </button>
           <Link className="rc-button rc-button-secondary" to="/cleanup">
+            <CleanupIcon />
             打开清理列表
           </Link>
           <Link className="rc-button rc-button-secondary" to="/batch">
+            <BatchIcon />
             进入批量确认
           </Link>
           <Link className="rc-button rc-button-secondary" to="/recovery">
+            <RecoveryIcon />
             打开恢复中心
           </Link>
         </div>
@@ -168,7 +196,7 @@ export function OverviewPage() {
 
       <section className="rc-overview-metrics">
         {metricCards.map((card) => (
-          <article className="rc-card rc-metric-card" key={card.label}>
+          <article className="rc-card rc-metric-card rc-metric-card--surface" key={card.label}>
             <span className="rc-metric-card__label">{card.label}</span>
             <strong className="rc-metric-card__value">{card.value}</strong>
             <span className={`rc-pill rc-pill--${card.tone}`}>{menuLoadState}</span>
@@ -179,9 +207,14 @@ export function OverviewPage() {
       <div className="rc-grid rc-grid--two">
         <section className="rc-card rc-section-card">
           <div className="rc-section-heading">
-            <div>
-              <span className="rc-kicker">问题热点</span>
-              <h3 className="rc-panel__title">优先定位高风险区域</h3>
+            <div className="rc-section-copy">
+              <span className="rc-icon-chip rc-icon-chip--danger">
+                <ShieldIcon />
+              </span>
+              <div className="rc-stack rc-stack--tight">
+                <span className="rc-panel__eyebrow">Detection Focus</span>
+                <h3 className="rc-panel__title">优先定位高风险区域</h3>
+              </div>
             </div>
             <span className="rc-pill rc-pill--high">{flaggedItems.length} 项待检查</span>
           </div>
@@ -202,19 +235,20 @@ export function OverviewPage() {
 
         <section className="rc-card rc-section-card">
           <div className="rc-section-heading">
-            <div>
-              <span className="rc-kicker">分类导航</span>
-              <h3 className="rc-panel__title">按问题区域进入清理列表</h3>
+            <div className="rc-section-copy">
+              <span className="rc-icon-chip rc-icon-chip--brand">
+                <SourceIcon />
+              </span>
+              <div className="rc-stack rc-stack--tight">
+                <span className="rc-panel__eyebrow">Category Navigation</span>
+                <h3 className="rc-panel__title">按问题区域进入清理列表</h3>
+              </div>
             </div>
             <span className="rc-pill rc-pill--info">{scannedScopeCount} 个对象场景</span>
           </div>
           <div className="rc-nav-card-grid">
             {categoryCards.map((category) => (
-              <Link
-                className="rc-nav-card"
-                key={category.target}
-                to={`/cleanup?target=${category.target}`}
-              >
+              <Link className="rc-nav-card" key={category.target} to={`/cleanup?target=${category.target}`}>
                 <div>
                   <strong>{category.label}</strong>
                   <p className="rc-body">{category.description}</p>
@@ -229,9 +263,14 @@ export function OverviewPage() {
       <div className="rc-grid rc-grid--two">
         <section className="rc-card rc-section-card">
           <div className="rc-section-heading">
-            <div>
-              <span className="rc-kicker">主要操作</span>
-              <h3 className="rc-panel__title">从概览直达核心动作</h3>
+            <div className="rc-section-copy">
+              <span className="rc-icon-chip rc-icon-chip--accent">
+                <CleanupIcon />
+              </span>
+              <div className="rc-stack rc-stack--tight">
+                <span className="rc-panel__eyebrow">Action Design</span>
+                <h3 className="rc-panel__title">从概览直达核心动作</h3>
+              </div>
             </div>
           </div>
           <div className="rc-stack">
@@ -252,9 +291,14 @@ export function OverviewPage() {
 
         <section className="rc-card rc-section-card">
           <div className="rc-section-heading">
-            <div>
-              <span className="rc-kicker">来源分布</span>
-              <h3 className="rc-panel__title">识别注册源与入口密度</h3>
+            <div className="rc-section-copy">
+              <span className="rc-icon-chip rc-icon-chip--accent">
+                <SourceIcon />
+              </span>
+              <div className="rc-stack rc-stack--tight">
+                <span className="rc-panel__eyebrow">Source Balance</span>
+                <h3 className="rc-panel__title">识别注册源与入口密度</h3>
+              </div>
             </div>
           </div>
           <div className="rc-stack">
@@ -262,7 +306,7 @@ export function OverviewPage() {
               <Link
                 className="rc-list-card rc-list-card--interactive"
                 key={sourceKind}
-                to={`/cleanup?source=${sourceKind}`}
+                to={`/cleanup?source=${sourceKind === 'shell_extension' ? 'third_party' : sourceKind === 'shell_verb' ? 'windows' : 'windows'}`}
               >
                 <div>
                   <strong>{formatMenuSourceKind(sourceKind as MenuSourceKind)}</strong>
@@ -300,9 +344,14 @@ export function OverviewPage() {
 
       <section className="rc-card rc-section-card">
         <div className="rc-section-heading">
-          <div>
-            <span className="rc-kicker">风险摘要</span>
-            <h3 className="rc-panel__title">近期需要关注的菜单项</h3>
+          <div className="rc-section-copy">
+            <span className="rc-icon-chip rc-icon-chip--danger">
+              <ShieldIcon />
+            </span>
+            <div className="rc-stack rc-stack--tight">
+              <span className="rc-panel__eyebrow">Risk Summary</span>
+              <h3 className="rc-panel__title">近期需要关注的菜单项</h3>
+            </div>
           </div>
           <Link className="rc-button rc-button-secondary" to="/cleanup?issue=unknown-source">
             查看全部问题项
