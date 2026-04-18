@@ -1,36 +1,25 @@
-import { describe, expect, it } from "vitest";
+import { invoke } from "@tauri-apps/api/core";
+import { describe, expect, it, vi } from "vitest";
 
 import {
-  disableMenuItem,
-  loadChangeHistory,
+  inspectMenuItemPermissions,
   loadMenuItems,
-  redoChange,
-  undoChange,
+  loadRecoveryPoints,
 } from "./menu-item-service";
 
-describe("menu-item-service fallback history", () => {
-  it("records disable, undo, and redo when Tauri invoke is unavailable", async () => {
+describe("menu-item-service fallback", () => {
+  it("provides menu items, permission hints, and recovery points without Tauri", async () => {
+    vi.mocked(invoke).mockRejectedValue(new Error("fallback"));
+
     const items = await loadMenuItems();
-    const target = items[0];
+    expect(items.length).toBeGreaterThan(0);
 
-    expect(target).toBeDefined();
+    const permission = await inspectMenuItemPermissions("HKEY_CLASSES_ROOT\\Directory\\shell\\OpenWithCode");
+    expect(permission.requiresElevation).toBe(true);
+    expect(permission.recommendedAction).toContain("提权");
 
-    const record = await disableMenuItem(target!, "test");
-    expect(record.status).toBe("applied");
-
-    const afterDisable = await loadMenuItems();
-    expect(afterDisable.some((entry) => entry.id === target?.id)).toBe(false);
-
-    const undone = await undoChange(record.id);
-    expect(undone.status).toBe("undone");
-
-    const afterUndo = await loadMenuItems();
-    expect(afterUndo.some((entry) => entry.id === target?.id)).toBe(true);
-
-    const redone = await redoChange(record.id);
-    expect(redone.status).toBe("applied");
-
-    const history = await loadChangeHistory();
-    expect(history[0]?.id).toBe(record.id);
+    const recoveryPoints = await loadRecoveryPoints();
+    expect(recoveryPoints.length).toBeGreaterThan(0);
+    expect(recoveryPoints[0]?.label).toContain("Open with Code");
   });
 });
