@@ -1,10 +1,19 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from '@/app/App';
+import { RouterProvider } from 'react-router-dom';
+
 import '@/styles/index.css';
+import './styles/app.css';
+import { appRouter } from './router';
+import { AppStateProvider } from './state/app-state';
+import { AppThemeProvider } from './theme/theme-provider';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <App />
+    <AppStateProvider>
+      <AppThemeProvider>
+        <RouterProvider router={appRouter} />
+      </AppThemeProvider>
+    </AppStateProvider>
   </React.StrictMode>,
 );
