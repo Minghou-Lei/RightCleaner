@@ -2,8 +2,8 @@
   color-scheme: light;
 
   /* Typography */
-  --font-sans: "Plus Jakarta Sans", "Inter", "Segoe UI", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", "Cascadia Code", "SFMono-Regular", monospace;
+  --font-sans: 'Plus Jakarta Sans', 'Inter', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Cascadia Code', 'SFMono-Regular', monospace;
 
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
