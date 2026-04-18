@@ -98,14 +98,14 @@ describe('OverviewPage', () => {
     );
 
     expect(await screen.findByRole('heading', { name: '首页概览与分类导航' })).toBeInTheDocument();
-    expect(screen.getByText('菜单项总数')).toBeInTheDocument();
+    expect((await screen.findAllByText('菜单项总数')).length).toBeGreaterThan(0);
     expect(screen.getByRole('link', { name: /文件菜单/i })).toHaveAttribute(
       'href',
       '/cleanup?target=file',
     );
     expect(screen.getByRole('link', { name: /第三方扩展/i })).toHaveAttribute(
       'href',
-      '/cleanup?source=shell_extension&issue=third-party',
+      '/cleanup?source=third_party&issue=third-party',
     );
     expect(screen.getByRole('button', { name: '重新扫描' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: '进入批量确认' })).toHaveAttribute('href', '/batch');

@@ -75,7 +75,6 @@ export function CleanupListPage() {
     activeItemId,
     activeItemIds,
     isItemBusy,
-    toggleMenuItemEnabled,
     setMenuItemsEnabled,
   } = useAppState();
   const [searchParams] = useSearchParams();

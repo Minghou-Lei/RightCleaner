@@ -248,7 +248,7 @@ export function AppStateProvider({ children }: PropsWithChildren) {
     [setMenuItemsEnabled]
   );
 
-  const activeItemId = activeItemIds.length === 1 ? activeItemIds[0] : null;
+  const activeItemId = activeItemIds.length === 1 ? (activeItemIds[0] ?? null) : null;
 
   const isItemBusy = useCallback((itemId: string) => activeItemIds.includes(itemId), [activeItemIds]);
 
