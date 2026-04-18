@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import {
   analyzeNormalizedMenuItem,
@@ -9,8 +9,10 @@ import { useAppState } from "../state/app-state";
 
 export function BatchReviewPage() {
   const {
-    state: { menuItems, selectedItemIds },
+    state: { menuItems, selectedItemIds, destructiveActionMessage, destructiveActionState },
+    deleteSelectedItems,
   } = useAppState();
+  const [snapshotLabel, setSnapshotLabel] = useState("");
 
   const duplicateCounts = useMemo(() => {
     const counts = new Map<string, number>();
@@ -68,8 +70,28 @@ export function BatchReviewPage() {
         <section className="rc-card">
           <h3>执行配置</h3>
           <p className="rc-body">
-            批量操作会保留异常、重复、已隐藏和来源不明标记，避免在确认页丢失风险语义。
+            所有删除操作都会先生成恢复点快照，再执行注册表子树删除，确保可以从恢复中心安全回滚。
           </p>
+          <div className="rc-stack">
+            <input
+              className="rc-input"
+              onChange={(event) => setSnapshotLabel(event.target.value)}
+              placeholder="可选：为这次删除填写快照名称"
+              value={snapshotLabel}
+            />
+            <button
+              className="rc-button rc-button-primary"
+              disabled={selectedItemIds.length === 0 || destructiveActionState === "running"}
+              onClick={() => void deleteSelectedItems(snapshotLabel)}
+              type="button"
+            >
+              {destructiveActionState === "running" ? "正在备份并删除…" : "生成快照后删除所选项"}
+            </button>
+            <p className="rc-body">
+              已选 {selectedItemIds.length} 项。删除后可在“备份恢复”页面按快照恢复。
+            </p>
+            {destructiveActionMessage ? <p className="rc-body">{destructiveActionMessage}</p> : null}
+          </div>
         </section>
       </div>
     </section>

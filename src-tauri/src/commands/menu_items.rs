@@ -2,10 +2,19 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::domain::menu_item::{
-    MenuItemBackupAction, MenuItemBackupRecord, MenuItemBackupStatus, NormalizedMenuItem,
+use tauri::{AppHandle, Manager};
+
+use crate::domain::{
+    backup::{BackupRecord, BackupSnapshot, BackupStatus, CleanupExecutionResult},
+    menu_item::{
+        MenuItemBackupAction, MenuItemBackupRecord, MenuItemBackupStatus, NormalizedMenuItem,
+    },
 };
-use crate::infrastructure::registry::menu_item_scanner::scan_normalized_menu_items;
+use crate::infrastructure::{
+    backup_repository::{backup_root_from, BackupRepository},
+    registry::{RegistryLocation, WindowsRegistryReader},
+    registry::menu_item_scanner::scan_normalized_menu_items,
+};
 
 #[tauri::command]
 pub fn list_menu_items() -> Result<Vec<NormalizedMenuItem>, String> {
@@ -80,6 +89,73 @@ pub fn restore_recovery_point(backup_id: String) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+pub fn list_backup_records(app: AppHandle) -> Result<Vec<BackupRecord>, String> {
+    backup_repository(&app)?.list_records()
+}
+
+#[tauri::command]
+pub fn remove_menu_items(
+    app: AppHandle,
+    item_ids: Vec<String>,
+    label: Option<String>,
+) -> Result<CleanupExecutionResult, String> {
+    if item_ids.is_empty() {
+        return Err("至少选择一个菜单项后才能执行删除".to_string());
+    }
+
+    let items = find_selected_items(item_ids)?;
+    let registry = WindowsRegistryReader::new();
+    let trees = items
+        .iter()
+        .map(|item| {
+            let location = parse_location(&item.trace.registration_path)?;
+            registry
+                .read_tree(&location)
+                .map_err(|error| error.to_string())?
+                .ok_or_else(|| format!("未找到待删除项 `{}` 的注册表子树", item.title))
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+
+    let repo = backup_repository(&app)?;
+    let snapshot = BackupSnapshot {
+        id: BackupRepository::next_snapshot_id(),
+        label: label.unwrap_or_else(|| default_backup_label(items.len())),
+        created_at: BackupRepository::timestamp_label(),
+        status: BackupStatus::Ready,
+        items: items.clone(),
+        registry_trees: trees,
+    };
+    let backup = repo.save_snapshot(&snapshot)?;
+
+    for item in &items {
+        let location = parse_location(&item.trace.registration_path)?;
+        registry
+            .delete_tree(&location)
+            .map_err(|error| error.to_string())?;
+    }
+
+    Ok(CleanupExecutionResult {
+        backup,
+        removed_item_ids: items.into_iter().map(|item| item.id).collect(),
+    })
+}
+
+#[tauri::command]
+pub fn restore_backup(app: AppHandle, backup_id: String) -> Result<BackupRecord, String> {
+    let repo = backup_repository(&app)?;
+    let snapshot = repo.load_snapshot(&backup_id)?;
+    let registry = WindowsRegistryReader::new();
+
+    for tree in &snapshot.registry_trees {
+        let location = &tree.key.location;
+        let _ = registry.delete_tree(location);
+        registry.restore_tree(tree).map_err(|error| error.to_string())?;
+    }
+
+    repo.mark_restored(&backup_id)
+}
+
 #[derive(Debug, Clone, Copy)]
 enum RegistryHive {
     ClassesRoot,
@@ -98,6 +174,39 @@ fn find_menu_item(item_id: &str) -> Result<NormalizedMenuItem, String> {
         .into_iter()
         .find(|item| item.id == item_id)
         .ok_or_else(|| format!("未找到菜单项 {item_id}"))
+}
+
+fn find_selected_items(item_ids: Vec<String>) -> Result<Vec<NormalizedMenuItem>, String> {
+    let items = scan_normalized_menu_items()?;
+    let mut selected = Vec::new();
+
+    for item_id in item_ids {
+        let item = items
+            .iter()
+            .find(|entry| entry.id == item_id)
+            .cloned()
+            .ok_or_else(|| format!("未找到菜单项 `{item_id}`，请先重新扫描"))?;
+        selected.push(item);
+    }
+
+    Ok(selected)
+}
+
+fn parse_location(path: &str) -> Result<RegistryLocation, String> {
+    RegistryLocation::parse_full_path(path)
+        .ok_or_else(|| format!("无法解析注册表路径 `{path}`"))
+}
+
+fn default_backup_label(item_count: usize) -> String {
+    format!("删除前快照（{} 项）", item_count)
+}
+
+fn backup_repository(app: &AppHandle) -> Result<BackupRepository, String> {
+    let base_dir: PathBuf = app
+        .path()
+        .app_local_data_dir()
+        .map_err(|error| format!("无法定位应用数据目录: {error}"))?;
+    Ok(backup_root_from(base_dir))
 }
 
 fn generate_backup_id() -> String {
@@ -142,7 +251,8 @@ fn save_backup_records(records: &[MenuItemBackupRecord]) -> Result<(), String> {
     ensure_parent_dir(&path)?;
     let content = serde_json::to_string_pretty(records)
         .map_err(|error| format!("序列化恢复记录失败: {error}"))?;
-    fs::write(&path, content).map_err(|error| format!("写入恢复记录失败 {}: {error}", path.display()))
+    fs::write(&path, content)
+        .map_err(|error| format!("写入恢复记录失败 {}: {error}", path.display()))
 }
 
 fn ensure_parent_dir(path: &Path) -> Result<(), String> {
@@ -231,8 +341,8 @@ fn restore_legacy_disable_value(path: &RegistryPath, value: Option<&str>) -> Res
 
 #[cfg(windows)]
 fn open_registry_key(path: &RegistryPath) -> Result<winreg::RegKey, String> {
-    use winreg::RegKey;
     use winreg::enums::{HKEY_CLASSES_ROOT, HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE, KEY_READ, KEY_SET_VALUE};
+    use winreg::RegKey;
 
     let root = match path.hive {
         RegistryHive::ClassesRoot => RegKey::predef(HKEY_CLASSES_ROOT),

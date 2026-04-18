@@ -11,6 +11,9 @@ pub fn run() {
             commands::menu_items::set_menu_item_enabled,
             commands::menu_items::list_recovery_points,
             commands::menu_items::restore_recovery_point,
+            commands::menu_items::list_backup_records,
+            commands::menu_items::remove_menu_items,
+            commands::menu_items::restore_backup,
             shell_menu::enumerate_shell_menu_sources
         ])
         .run(tauri::generate_context!())
