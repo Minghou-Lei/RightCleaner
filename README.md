@@ -206,4 +206,8 @@ The next planned work areas are:
 
 ## License
 
-No license has been declared yet.
+This project is licensed under the `0BSD` license.
+
+本项目采用 `0BSD` 许可证发布。
+
+See [LICENSE](LICENSE).
